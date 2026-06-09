@@ -16,20 +16,25 @@ const error = ref('')
 // ---------- fetch data ----------
 async function fetchHome() {
   const { data, error: err } = await supabase.from('homes').select().eq('id', homeId).single()
-  if (err || !data) { error.value = 'Home not found'; loading.value = false; return }
+  if (err || !data) { error.value = err?.message || 'Home not found'; loading.value = false; return }
   home.value = data
-  fetchRooms()
-  fetchItems()
+  await fetchRooms()
+  await fetchItems()
 }
 
 async function fetchRooms() {
-  const { data } = await supabase.from('rooms').select().eq('home_id', homeId).order('created_at')
+  const { data, error: err } = await supabase.from('rooms').select().eq('home_id', homeId).order('created_at')
+  if (err) { error.value = err.message; loading.value = false; return }
   rooms.value = data || []
   loading.value = false
 }
 
 async function fetchItems() {
-  const { data } = await supabase.from('items').select('*, rooms(id,name)').in('room_id', rooms.value.map(r => r.id)).order('created_at')
+  const roomIds = rooms.value.map(r => r.id)
+  if (roomIds.length === 0) { items.value = []; return }
+
+  const { data, error: err } = await supabase.from('items').select('*, rooms(id,name)').in('room_id', roomIds).order('created_at')
+  if (err) { error.value = err.message; return }
   items.value = data || []
 }
 
@@ -42,19 +47,26 @@ function openAddRoom() { editingRoom.value = null; roomForm.value = { name: '', 
 function openEditRoom(room) { editingRoom.value = room; roomForm.value = { name: room.name, budget: String(room.budget) }; showRoomForm.value = true }
 
 async function saveRoom() {
+  error.value = ''
   const data = { name: roomForm.value.name.trim(), budget: parseFloat(roomForm.value.budget) || 0, home_id: homeId }
+  let err
+
   if (editingRoom.value) {
-    await supabase.from('rooms').update(data).eq('id', editingRoom.value.id)
+    ;({ error: err } = await supabase.from('rooms').update(data).eq('id', editingRoom.value.id))
   } else {
-    await supabase.from('rooms').insert(data)
+    ;({ error: err } = await supabase.from('rooms').insert(data))
   }
+  if (err) { error.value = err.message; return }
+
   showRoomForm.value = false
   fetchRooms()
 }
 
 async function deleteRoom(id) {
   if (!confirm('Delete this room and all its items?')) return
-  await supabase.from('rooms').delete().eq('id', id)
+  error.value = ''
+  const { error: err } = await supabase.from('rooms').delete().eq('id', id)
+  if (err) { error.value = err.message; return }
   fetchRooms()
   fetchItems()
 }
@@ -82,6 +94,7 @@ function openEditItem(item) {
 }
 
 async function saveItem() {
+  error.value = ''
   let vendorLinks = []
   try { vendorLinks = JSON.parse(itemForm.value.vendor_links || '[]') } catch (e) { vendorLinks = [] }
 
@@ -96,18 +109,23 @@ async function saveItem() {
     notes: itemForm.value.notes,
   }
 
+  let err
   if (editingItem.value) {
-    await supabase.from('items').update(data).eq('id', editingItem.value.id)
+    ;({ error: err } = await supabase.from('items').update(data).eq('id', editingItem.value.id))
   } else {
-    await supabase.from('items').insert(data)
+    ;({ error: err } = await supabase.from('items').insert(data))
   }
+  if (err) { error.value = err.message; return }
+
   showItemForm.value = false
   fetchItems()
 }
 
 async function deleteItem(id) {
   if (!confirm('Delete this item?')) return
-  await supabase.from('items').delete().eq('id', id)
+  error.value = ''
+  const { error: err } = await supabase.from('items').delete().eq('id', id)
+  if (err) { error.value = err.message; return }
   fetchItems()
 }
 

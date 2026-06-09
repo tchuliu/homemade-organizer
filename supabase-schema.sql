@@ -51,3 +51,9 @@ ALTER TABLE items ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all on homes" ON homes FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on rooms" ON rooms FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on items" ON items FOR ALL USING (true) WITH CHECK (true);
+
+-- Grant table privileges to the roles used by public client keys.
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON homes TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON rooms TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON items TO anon, authenticated;
