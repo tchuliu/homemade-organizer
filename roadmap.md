@@ -26,7 +26,7 @@ Roadmap organized by priority. Higher priority items should improve daily usabil
 - Improve `Join Existing` to accept either a home ID or a full URL.
 - Review budget tab item count logic and avoid using `items.value` directly in the template.
 
-## P1 - Purchase status and budget clarity
+## P1 - Purchase status, budget clarity, and currency
 
 ### Purchase status
 
@@ -48,6 +48,29 @@ Roadmap organized by priority. Higher priority items should improve daily usabil
 - Improve the current budget summary bar so it works like a quick overview.
 - Consider keeping budget information visible while browsing rooms and items.
 - Add direct navigation from budget sections to filtered room/item lists.
+
+### Currency format selector
+
+Goal: allow the user to choose how money is displayed without changing the full app language yet.
+
+- Add a currency selector in the home detail header, near `Home` and `Copy Link`.
+- Support initial formats: BRL / pt-BR, USD / en-US, and EUR / de-DE.
+- Persist the selected currency in `localStorage`.
+- Apply the selected currency format to every money value in the app.
+- Keep interface text in English for now.
+
+### Currency formatting cleanup
+
+- Create a centralized currency formatter.
+- Replace inline currency formatting calls with one shared `formatCurrency(value)` function.
+- Avoid hardcoded `USD` / `en-US` formatting inside templates.
+- Keep currency formatting independent from future interface language settings.
+
+### Future language support
+
+- Decide later if the app should support multiple interface languages.
+- Add a separate language selector only if full interface translation becomes necessary.
+- Translate labels, buttons, statuses, priorities, categories, placeholders, and errors only after currency formatting is stable.
 
 ## P2 - Subitems and richer item structure
 
@@ -127,21 +150,21 @@ Roadmap organized by priority. Higher priority items should improve daily usabil
   - `ItemModal`
   - `StatusBadge`
 
-### Localization and formatting
-
-- Decide whether the app should use English or Portuguese consistently.
-- Decide whether currency should stay as USD or become configurable.
-- Centralize currency formatting if more budget features are added.
-
 ## Suggested implementation order
 
-1. Fix form validation, Enter key submit, and invalid vendor link errors.
-2. Improve notes and vendor link display.
-3. Improve join/copy link behavior.
-4. Fix budget tab item count and improve budget warnings.
-5. Add quick `mark as bought` action.
-6. Add planned vs actual budget tracking.
-7. Add filters/search/sorting for items.
-8. Design the data model for subitems before implementing the UI.
-9. Implement subitems.
-10. Improve README and Supabase documentation.
+1. Finish all P0 items before starting P1.
+2. Fix item room selection, form validation, Enter key submit, and invalid vendor link errors.
+3. Improve notes and vendor link display.
+4. Improve join/copy link behavior.
+5. Fix budget tab item count and improve budget warnings.
+6. Start P1 only after P0 is complete.
+7. Add a centralized currency formatter.
+8. Add the currency selector to the header.
+9. Persist selected currency in `localStorage`.
+10. Replace all hardcoded currency formatting with `formatCurrency(value)`.
+11. Add quick `mark as bought` action.
+12. Add planned vs actual budget tracking.
+13. Add filters/search/sorting for items.
+14. Design the data model for subitems before implementing the UI.
+15. Implement subitems.
+16. Improve README and Supabase documentation.
