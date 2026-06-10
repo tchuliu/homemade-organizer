@@ -6,6 +6,7 @@ Roadmap organized by priority. Higher priority items should improve daily usabil
 
 ### Forms and input flow
 
+- Save homes in localStorage so users can quickly refer to a house they already accessed
 - Remove default room when adding item to prevent adding the item to the wrong room. (Prevent saving when no room is selected)
 - Add Enter key support to save room and item modals.
 - Validate required fields before saving rooms and items.
