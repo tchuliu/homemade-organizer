@@ -6,13 +6,15 @@ Roadmap organized by priority. Higher priority items should improve daily usabil
 
 ### Forms and input flow
 
-- Save homes in localStorage so users can quickly refer to a house they already accessed
-- Remove default room when adding item to prevent adding the item to the wrong room. (Prevent saving when no room is selected)
-- Add Enter key support to save room and item modals.
-- Validate required fields before saving rooms and items.
-- Disable `Add Item` when no room exists yet.
+- [x] Save homes in localStorage so users can quickly refer to a house they already accessed
+- [x] Remove default room when adding item to prevent adding the item to the wrong room. (Prevent saving when no room is selected)
+- [x] Add Enter key support to save room and item modals.
+- [x] Validate required fields before saving rooms and items.
+- [x] Disable `Add Item` when no room exists yet.
 - Show a clear validation error when vendor links are not valid JSON.
-- Keep modal actions consistent: `Save`, `Cancel`, loading/disabled states, and error feedback.
+- [~] Keep modal actions consistent: `Save`, `Cancel`, loading/disabled states, and error feedback. Error feedback is in place; loading/disabled states still need implementation.
+- [x] Autofocus the first field when room and item modals open.
+- [x] Keep the home detail page visible for non-fatal action errors instead of replacing it with a full-page error.
 
 ### Notes and links display
 
@@ -24,7 +26,8 @@ Roadmap organized by priority. Higher priority items should improve daily usabil
 ### Small quality fixes
 
 - Show visual feedback after copying the home link.
-- Improve `Join Existing` to accept either a home ID or a full URL.
+- Add consistent visual feedback for user actions: clickable button states, success confirmation, transient success/error messages, and clear modal feedback after saves/deletes.
+- [x] Improve `Join Existing` to accept either a home ID or a full URL.
 - Review budget tab item count logic and avoid using `items.value` directly in the template.
 
 ## P1 - Purchase status, budget clarity, and currency

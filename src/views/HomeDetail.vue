@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase'
 import { saveRecentHome } from '../lib/recentHomes'
@@ -12,12 +12,14 @@ const rooms = ref([])
 const items = ref([])
 const activeTab = ref('rooms')
 const loading = ref(true)
-const error = ref('')
+const loadError = ref('')
+const actionError = ref('')
+const formError = ref('')
 
 // ---------- fetch data ----------
 async function fetchHome() {
   const { data, error: err } = await supabase.from('homes').select().eq('id', homeId).single()
-  if (err || !data) { error.value = err?.message || 'Home not found'; loading.value = false; return }
+  if (err || !data) { loadError.value = err?.message || 'Home not found'; loading.value = false; return }
   home.value = data
   saveRecentHome(data)
   await fetchRooms()
@@ -26,7 +28,7 @@ async function fetchHome() {
 
 async function fetchRooms() {
   const { data, error: err } = await supabase.from('rooms').select().eq('home_id', homeId).order('created_at')
-  if (err) { error.value = err.message; loading.value = false; return }
+  if (err) { actionError.value = err.message; loading.value = false; return }
   rooms.value = data || []
   loading.value = false
 }
@@ -36,7 +38,7 @@ async function fetchItems() {
   if (roomIds.length === 0) { items.value = []; return }
 
   const { data, error: err } = await supabase.from('items').select('*, rooms(id,name)').in('room_id', roomIds).order('created_at')
-  if (err) { error.value = err.message; return }
+  if (err) { actionError.value = err.message; return }
   items.value = data || []
 }
 
@@ -44,12 +46,20 @@ async function fetchItems() {
 const showRoomForm = ref(false)
 const editingRoom = ref(null)
 const roomForm = ref({ name: '', budget: '' })
+const roomNameInput = ref(null)
 
-function openAddRoom() { editingRoom.value = null; roomForm.value = { name: '', budget: '' }; showRoomForm.value = true }
-function openEditRoom(room) { editingRoom.value = room; roomForm.value = { name: room.name, budget: String(room.budget) }; showRoomForm.value = true }
+async function focusRoomNameInput() {
+  await nextTick()
+  roomNameInput.value?.focus()
+}
+
+function openAddRoom() { editingRoom.value = null; formError.value = ''; roomForm.value = { name: '', budget: '' }; showRoomForm.value = true; focusRoomNameInput() }
+function openEditRoom(room) { editingRoom.value = room; formError.value = ''; roomForm.value = { name: room.name, budget: String(room.budget) }; showRoomForm.value = true; focusRoomNameInput() }
 
 async function saveRoom() {
-  error.value = ''
+  actionError.value = ''
+  formError.value = ''
+  if (!roomForm.value.name.trim()) { formError.value = 'Room name is required.'; return }
   const data = { name: roomForm.value.name.trim(), budget: parseFloat(roomForm.value.budget) || 0, home_id: homeId }
   let err
 
@@ -58,7 +68,7 @@ async function saveRoom() {
   } else {
     ;({ error: err } = await supabase.from('rooms').insert(data))
   }
-  if (err) { error.value = err.message; return }
+  if (err) { formError.value = err.message; return }
 
   showRoomForm.value = false
   fetchRooms()
@@ -66,9 +76,9 @@ async function saveRoom() {
 
 async function deleteRoom(id) {
   if (!confirm('Delete this room and all its items?')) return
-  error.value = ''
+  actionError.value = ''
   const { error: err } = await supabase.from('rooms').delete().eq('id', id)
-  if (err) { error.value = err.message; return }
+  if (err) { actionError.value = err.message; return }
   fetchRooms()
   fetchItems()
 }
@@ -78,25 +88,43 @@ const showItemForm = ref(false)
 const editingItem = ref(null)
 const itemForm = ref({ name: '', type: 'furniture', room_id: '', estimated_price: '', priority: 'medium', status: 'planned', vendor_links: '', notes: '' })
 const itemFilterRoom = ref('')
+const itemNameInput = ref(null)
 
 const filteredItems = computed(() => {
   if (!itemFilterRoom.value) return items.value
   return items.value.filter(i => i.room_id === itemFilterRoom.value)
 })
 
-function openAddItem() { editingItem.value = null; itemForm.value = { name: '', type: 'furniture', room_id: rooms.value[0]?.id || '', estimated_price: '', priority: 'medium', status: 'planned', vendor_links: '', notes: '' }; showItemForm.value = true }
+function openAddItem() {
+  if (rooms.value.length === 0) return
+  editingItem.value = null
+  formError.value = ''
+  itemForm.value = { name: '', type: 'furniture', room_id: '', estimated_price: '', priority: 'medium', status: 'planned', vendor_links: '', notes: '' }
+  showItemForm.value = true
+  focusItemNameInput()
+}
 function openEditItem(item) {
   editingItem.value = item
+  formError.value = ''
   itemForm.value = {
     name: item.name, type: item.type, room_id: item.room_id,
     estimated_price: String(item.estimated_price), priority: item.priority,
     status: item.status, vendor_links: JSON.stringify(item.vendor_links || []), notes: item.notes || ''
   }
   showItemForm.value = true
+  focusItemNameInput()
+}
+
+async function focusItemNameInput() {
+  await nextTick()
+  itemNameInput.value?.focus()
 }
 
 async function saveItem() {
-  error.value = ''
+  actionError.value = ''
+  formError.value = ''
+  if (!itemForm.value.name.trim()) { formError.value = 'Item name is required.'; return }
+  if (!itemForm.value.room_id) { formError.value = 'Select a room before saving the item.'; return }
   let vendorLinks = []
   try { vendorLinks = JSON.parse(itemForm.value.vendor_links || '[]') } catch (e) { vendorLinks = [] }
 
@@ -117,7 +145,7 @@ async function saveItem() {
   } else {
     ;({ error: err } = await supabase.from('items').insert(data))
   }
-  if (err) { error.value = err.message; return }
+  if (err) { formError.value = err.message; return }
 
   showItemForm.value = false
   fetchItems()
@@ -125,9 +153,9 @@ async function saveItem() {
 
 async function deleteItem(id) {
   if (!confirm('Delete this item?')) return
-  error.value = ''
+  actionError.value = ''
   const { error: err } = await supabase.from('items').delete().eq('id', id)
-  if (err) { error.value = err.message; return }
+  if (err) { actionError.value = err.message; return }
   fetchItems()
 }
 
@@ -167,8 +195,8 @@ function copyLink() {
 
 <template>
   <div v-if="loading" class="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>
-  <div v-else-if="error" class="min-h-screen flex flex-col items-center justify-center gap-4">
-    <p class="text-red-400 text-lg">{{ error }}</p>
+  <div v-else-if="loadError" class="min-h-screen flex flex-col items-center justify-center gap-4">
+    <p class="text-red-400 text-lg">{{ loadError }}</p>
     <button @click="router.push('/')" class="text-indigo-400 hover:text-indigo-300 underline">Back to home</button>
   </div>
 
@@ -187,6 +215,11 @@ function copyLink() {
           Copy Link
         </button>
       </div>
+    </div>
+
+    <div v-if="actionError" class="bg-red-950/60 border border-red-900 text-red-200 rounded-xl px-4 py-3 flex items-start justify-between gap-3">
+      <p class="text-sm">{{ actionError }}</p>
+      <button @click="actionError = ''" class="text-xs text-red-300 hover:text-red-100 transition-colors">Dismiss</button>
     </div>
 
     <!-- Budget quick bar -->
@@ -245,7 +278,11 @@ function copyLink() {
             <option value="">All Rooms</option>
             <option v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</option>
           </select>
-          <button @click="openAddItem" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-colors">+ Add Item</button>
+          <button
+            @click="openAddItem"
+            :disabled="rooms.length === 0"
+            class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm rounded-lg transition-colors"
+          >+ Add Item</button>
         </div>
       </div>
       <div v-if="filteredItems.length === 0" class="text-gray-500 text-center py-12">No items yet. Add one to get started.</div>
@@ -326,23 +363,25 @@ function copyLink() {
     <!-- MODALS -->
     <!-- Room Form Modal -->
     <div v-if="showRoomForm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" @click.self="showRoomForm = false">
-      <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-sm space-y-4">
+      <form @submit.prevent="saveRoom" class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-sm space-y-4">
         <h3 class="text-lg font-semibold text-white">{{ editingRoom ? 'Edit Room' : 'Add Room' }}</h3>
-        <input v-model="roomForm.name" placeholder="Room name" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500" />
+        <input ref="roomNameInput" v-model="roomForm.name" placeholder="Room name" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500" />
         <input v-model="roomForm.budget" type="number" step="0.01" placeholder="Budget" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500" />
+        <p v-if="formError" class="text-sm text-red-400">{{ formError }}</p>
         <div class="flex gap-2">
-          <button @click="saveRoom" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg transition-colors">Save</button>
-          <button @click="showRoomForm = false" class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 py-2 rounded-lg transition-colors">Cancel</button>
+          <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg transition-colors">Save</button>
+          <button type="button" @click="showRoomForm = false" class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 py-2 rounded-lg transition-colors">Cancel</button>
         </div>
-      </div>
+      </form>
     </div>
 
     <!-- Item Form Modal -->
     <div v-if="showItemForm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto" @click.self="showItemForm = false">
-      <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-sm space-y-3 my-8">
+      <form @submit.prevent="saveItem" class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-sm space-y-3 my-8">
         <h3 class="text-lg font-semibold text-white">{{ editingItem ? 'Edit Item' : 'Add Item' }}</h3>
-        <input v-model="itemForm.name" placeholder="Item name" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500" />
-        <select v-model="itemForm.room_id" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+        <input ref="itemNameInput" v-model="itemForm.name" placeholder="Item name" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500" />
+        <select v-model="itemForm.room_id" required class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+          <option value="" disabled>Select a room</option>
           <option v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</option>
         </select>
         <div class="grid grid-cols-2 gap-2">
@@ -368,11 +407,12 @@ function copyLink() {
         </div>
         <textarea v-model="itemForm.vendor_links" placeholder="Vendor links (JSON array, e.g. [{&quot;label&quot;:&quot;Amazon&quot;,&quot;url&quot;:&quot;https://...&quot;}])" rows="2" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"></textarea>
         <textarea v-model="itemForm.notes" placeholder="Notes (dimensions, color, etc.)" rows="2" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"></textarea>
+        <p v-if="formError" class="text-sm text-red-400">{{ formError }}</p>
         <div class="flex gap-2">
-          <button @click="saveItem" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg transition-colors">Save</button>
-          <button @click="showItemForm = false" class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 py-2 rounded-lg transition-colors">Cancel</button>
+          <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg transition-colors">Save</button>
+          <button type="button" @click="showItemForm = false" class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 py-2 rounded-lg transition-colors">Cancel</button>
         </div>
-      </div>
+      </form>
     </div>
   </div>
 </template>
