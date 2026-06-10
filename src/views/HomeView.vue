@@ -1,7 +1,8 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase'
+import { loadRecentHomes, parseHomeId, saveRecentHome } from '../lib/recentHomes'
 
 const router = useRouter()
 const name = ref('')
@@ -10,6 +11,21 @@ const joinId = ref('')
 const loading = ref(false)
 const error = ref('')
 const mode = ref('create')
+const recentHomes = ref([])
+
+function refreshRecentHomes() {
+  recentHomes.value = loadRecentHomes()
+}
+
+function openRecentHome(homeId) {
+  if (!homeId) return
+  saveRecentHome(recentHomes.value.find((home) => home.id === homeId) || { id: homeId })
+  router.push(`/home/${homeId}`)
+}
+
+function shortHomeId(homeId) {
+  return homeId ? `${homeId.slice(0, 8)}...` : ''
+}
 
 async function createHome() {
   if (!name.value.trim()) return
@@ -24,14 +40,21 @@ async function createHome() {
 
   if (err) { error.value = err.message; loading.value = false; return }
 
+  saveRecentHome(data)
+  refreshRecentHomes()
   router.push(`/home/${data.id}`)
 }
 
 function joinHome() {
   if (!joinId.value.trim()) return
-  const id = joinId.value.trim()
+  const id = parseHomeId(joinId.value)
+  if (!id) return
+  saveRecentHome({ id })
+  refreshRecentHomes()
   router.push(`/home/${id}`)
 }
+
+onMounted(refreshRecentHomes)
 </script>
 
 <template>
@@ -101,6 +124,25 @@ function joinHome() {
           Join Home
         </button>
       </div>
+
+      <div v-if="recentHomes.length" class="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-3">
+        <div>
+          <h2 class="text-sm font-semibold text-white">Recent homes</h2>
+          <p class="text-xs text-gray-500">Quickly reopen a home you accessed before.</p>
+        </div>
+        <div class="space-y-2">
+          <button
+            v-for="home in recentHomes"
+            :key="home.id"
+            @click="openRecentHome(home.id)"
+            class="w-full text-left bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg px-3 py-2 transition-colors"
+          >
+            <span class="block text-sm font-medium text-white truncate">{{ home.name || 'Unnamed home' }}</span>
+            <span class="block text-xs text-gray-500">ID: {{ shortHomeId(home.id) }}</span>
+          </button>
+        </div>
+      </div>
+      
     </div>
   </div>
 </template>

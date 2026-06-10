@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '../lib/supabase'
+import { saveRecentHome } from '../lib/recentHomes'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,6 +19,7 @@ async function fetchHome() {
   const { data, error: err } = await supabase.from('homes').select().eq('id', homeId).single()
   if (err || !data) { error.value = err?.message || 'Home not found'; loading.value = false; return }
   home.value = data
+  saveRecentHome(data)
   await fetchRooms()
   await fetchItems()
 }
