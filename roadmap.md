@@ -30,51 +30,51 @@ Roadmap organized by priority. Higher priority items should improve daily usabil
 - [x] Improve `Join Existing` to accept either a home ID or a full URL.
 - [x] Review budget tab item count logic and avoid using `items.value` directly in the template.
 
-## P1 - Purchase status, budget clarity, and currency
+## P1 - Research and purchase options
 
-### Purchase status
+Goal: make the app useful while researching furniture and appliances together. The core flow is: create rooms, add an item need such as `TV`, then compare possible products before deciding what to buy.
 
-- Add a quick action to mark an item as bought from the item list.
-- Add support to mark future subitems as bought.
-- Show totals by status: planned, researching, and bought.
-- Make item status more visible in the list.
+### Purchase options per item
 
-### Budget tracking
+- [x] Store purchase options inside the current `items.vendor_links` JSONB field for now, to avoid a schema migration before the app shape is clearer.
+- [x] Allow each item to have multiple purchase options.
+- [x] Each option should support model/name, store, price, URL, notes, and whether it is the preferred option.
+- [x] Show options directly under each item so alternatives can be compared quickly.
+- [x] Allow one preferred option per item.
+- [x] Keep old simple vendor links readable as legacy options.
+- Later, migrate purchase options to a dedicated table if JSONB becomes hard to maintain.
 
-- Split planned cost from actual spent cost.
-- Show total budget, planned total, bought total, and remaining budget.
+### Budget from selected options
+
+- [x] Use the preferred option price as the item estimate when it exists.
+- [x] Fall back to the manual estimated price when no preferred option exists.
+- [x] Show the current estimate in the item list.
+- [x] Show the lowest researched price as supporting information when options exist.
+- [x] Apply selected-option estimates to room and home budget totals.
 - Add stronger visual warnings when the total budget is exceeded.
 - Add stronger visual warnings when a room budget is exceeded.
-- Allow editing the total home budget after the home is created.
-
-### Budget navigation
-
-- Improve the current budget summary bar so it works like a quick overview.
-- Consider keeping budget information visible while browsing rooms and items.
-- Add direct navigation from budget sections to filtered room/item lists.
-
-### Currency format selector
-
-Goal: allow the user to choose how money is displayed without changing the full app language yet.
-
-- Add a currency selector in the home detail header, near `Home` and `Copy Link`.
-- Support initial formats: BRL / pt-BR, USD / en-US, and EUR / de-DE.
-- Persist the selected currency in `localStorage`.
-- Apply the selected currency format to every money value in the app.
-- Keep interface text in English for now.
 
 ### Currency formatting cleanup
 
-- Create a centralized currency formatter.
-- Replace inline currency formatting calls with one shared `formatCurrency(value)` function.
-- Avoid hardcoded `USD` / `en-US` formatting inside templates.
-- Keep currency formatting independent from future interface language settings.
+- [x] Create a centralized currency formatter.
+- [x] Use BRL / pt-BR as the default display format.
+- [x] Replace inline currency formatting calls with one shared `formatCurrency(value)` function.
+- [x] Avoid hardcoded `USD` / `en-US` formatting inside templates.
+- [x] Keep currency formatting independent from future interface language settings.
 
-### Future language support
+### Purchase status
 
-- Decide later if the app should support multiple interface languages.
+- Keep item status visible in the list.
+- Add a quick action to mark an item as bought after options are useful.
+- Show totals by status: planned, researching, preferred, and bought.
+- Split planned estimate from actual spent only after the preferred/bought flow is clearer.
+
+### Future language and currency selector
+
+- Keep interface text in English for now.
+- Add BRL / USD / EUR selector only if the app needs multiple currency views.
+- Persist a future selected currency in `localStorage`.
 - Add a separate language selector only if full interface translation becomes necessary.
-- Translate labels, buttons, statuses, priorities, categories, placeholders, and errors only after currency formatting is stable.
 
 ## P2 - Subitems and richer item structure
 
@@ -162,13 +162,14 @@ Goal: allow the user to choose how money is displayed without changing the full 
 4. Improve join/copy link behavior.
 5. Fix budget tab item count and improve budget warnings.
 6. Start P1 only after P0 is complete.
-7. Add a centralized currency formatter.
-8. Add the currency selector to the header.
-9. Persist selected currency in `localStorage`.
-10. Replace all hardcoded currency formatting with `formatCurrency(value)`.
-11. Add quick `mark as bought` action.
-12. Add planned vs actual budget tracking.
-13. Add filters/search/sorting for items.
-14. Design the data model for subitems before implementing the UI.
-15. Implement subitems.
-16. Improve README and Supabase documentation.
+7. Rework P1 around purchase options per item.
+8. Add a centralized BRL currency formatter.
+9. Replace all hardcoded currency formatting with `formatCurrency(value)`.
+10. Add editable purchase options to the item modal.
+11. Show purchase options inside each item.
+12. Use the preferred option price in budget totals.
+13. Improve budget warnings.
+14. Add quick `mark as bought` action after the option flow is stable.
+15. Add filters/search/sorting for items.
+16. Decide whether purchase options need a dedicated table.
+17. Improve README and Supabase documentation.

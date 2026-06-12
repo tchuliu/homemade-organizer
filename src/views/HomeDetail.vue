@@ -119,7 +119,16 @@ async function deleteRoom(id) {
 // ---------- item CRUD ----------
 const showItemForm = ref(false)
 const editingItem = ref(null)
-const itemForm = ref({ name: '', type: 'furniture', room_id: '', estimated_price: '', priority: 'medium', status: 'planned', vendor_links: '', notes: '' })
+const itemForm = ref({
+  name: '',
+  type: 'furniture',
+  room_id: '',
+  estimated_price: '',
+  priority: 'medium',
+  status: 'planned',
+  purchase_options: [],
+  notes: '',
+})
 const itemFilterRoom = ref('')
 const itemNameInput = ref(null)
 const savingItem = ref(false)
@@ -131,11 +140,24 @@ const filteredItems = computed(() => {
   return items.value.filter(i => i.room_id === itemFilterRoom.value)
 })
 
+function emptyPurchaseOption() {
+  return { label: '', store: '', price: '', url: '', notes: '', selected: false }
+}
+
 function openAddItem() {
   if (rooms.value.length === 0) return
   editingItem.value = null
   formError.value = ''
-  itemForm.value = { name: '', type: 'furniture', room_id: '', estimated_price: '', priority: 'medium', status: 'planned', vendor_links: '', notes: '' }
+  itemForm.value = {
+    name: '',
+    type: 'furniture',
+    room_id: '',
+    estimated_price: '',
+    priority: 'medium',
+    status: 'planned',
+    purchase_options: [emptyPurchaseOption()],
+    notes: '',
+  }
   showItemForm.value = true
   focusItemNameInput()
 }
@@ -145,8 +167,9 @@ function openEditItem(item) {
   itemForm.value = {
     name: item.name, type: item.type, room_id: item.room_id,
     estimated_price: String(item.estimated_price), priority: item.priority,
-    status: item.status, vendor_links: JSON.stringify(item.vendor_links || []), notes: item.notes || ''
+    status: item.status, purchase_options: purchaseOptions(item), notes: item.notes || ''
   }
+  if (itemForm.value.purchase_options.length === 0) itemForm.value.purchase_options.push(emptyPurchaseOption())
   showItemForm.value = true
   focusItemNameInput()
 }
@@ -163,17 +186,7 @@ async function saveItem() {
   formError.value = ''
   if (!itemForm.value.name.trim()) { formError.value = 'Item name is required.'; return }
   if (!itemForm.value.room_id) { formError.value = 'Select a room before saving the item.'; return }
-  let vendorLinks = []
-  try {
-    vendorLinks = JSON.parse(itemForm.value.vendor_links || '[]')
-  } catch (e) {
-    formError.value = 'Vendor links must be valid JSON, for example [{"label":"Amazon","url":"https://..."}].'
-    return
-  }
-  if (!Array.isArray(vendorLinks)) {
-    formError.value = 'Vendor links must be a JSON array.'
-    return
-  }
+  const purchaseOptions = cleanPurchaseOptions(itemForm.value.purchase_options)
 
   const data = {
     name: itemForm.value.name.trim(),
@@ -182,7 +195,7 @@ async function saveItem() {
     estimated_price: parseFloat(itemForm.value.estimated_price) || 0,
     priority: itemForm.value.priority,
     status: itemForm.value.status,
-    vendor_links: vendorLinks,
+    vendor_links: purchaseOptions,
     notes: itemForm.value.notes,
   }
 
@@ -219,12 +232,12 @@ function getRoomName(roomId) {
 }
 
 // ---------- budget ----------
-const totalSpent = computed(() => items.value.reduce((sum, i) => sum + (Number(i.estimated_price) || 0), 0))
+const totalSpent = computed(() => items.value.reduce((sum, i) => sum + itemEstimate(i), 0))
 const totalBudget = computed(() => Number(home.value?.total_budget) || 0)
 const remaining = computed(() => totalBudget.value - totalSpent.value)
 
 function roomSpent(roomId) {
-  return items.value.filter(i => i.room_id === roomId).reduce((sum, i) => sum + (Number(i.estimated_price) || 0), 0)
+  return items.value.filter(i => i.room_id === roomId).reduce((sum, i) => sum + itemEstimate(i), 0)
 }
 
 function roomBudget(roomId) {
@@ -246,6 +259,139 @@ onMounted(fetchHome)
 // ---------- helpers ----------
 const priorityColors = { high: 'text-red-400', medium: 'text-yellow-400', low: 'text-green-400' }
 const statusColors = { planned: 'bg-gray-700 text-gray-300', researching: 'bg-blue-900 text-blue-300', bought: 'bg-green-900 text-green-300' }
+const currencyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+
+function formatCurrency(value) {
+  return currencyFormatter.format(Number(value) || 0)
+}
+
+function parseMoneyValue(value) {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'string' && /[R$\s,.]/.test(value)) {
+    const digits = value.replace(/\D/g, '')
+    if (!digits) return 0
+    return Number(digits) / 100
+  }
+  const normalizedValue = typeof value === 'string' ? value.replace(',', '.') : value
+  const numberValue = Number(normalizedValue)
+  return Number.isFinite(numberValue) ? numberValue : null
+}
+
+function formatCurrencyInput(value) {
+  return formatCurrency(parseMoneyValue(value) || 0)
+}
+
+function focusCurrencyInput(option) {
+  if (option.price === '' || option.price === null || option.price === undefined) {
+    option.price = formatCurrency(0)
+  } else {
+    option.price = formatCurrencyInput(option.price)
+  }
+}
+
+function updateCurrencyInput(option, event) {
+  const digits = event.target.value.replace(/\D/g, '')
+  const amount = digits ? Number(digits) / 100 : 0
+  option.price = formatCurrency(amount)
+}
+
+function normalizePurchaseOption(option, index = 0) {
+  if (typeof option === 'string') {
+    return {
+      label: '',
+      store: '',
+      price: '',
+      url: option,
+      notes: '',
+      selected: false,
+    }
+  }
+
+  const price = parseMoneyValue(option?.price ?? option?.estimated_price)
+
+  return {
+    label: option?.label || option?.name || option?.model || '',
+    store: option?.store || '',
+    price: price === null ? '' : formatCurrency(price),
+    url: option?.url || '',
+    notes: option?.notes || '',
+    selected: Boolean(option?.selected || option?.preferred),
+  }
+}
+
+function purchaseOptions(item) {
+  if (!Array.isArray(item?.vendor_links)) return []
+  return item.vendor_links.map((option, index) => normalizePurchaseOption(option, index))
+}
+
+function optionHasContent(option) {
+  return Boolean(
+    option.label?.trim() ||
+    option.store?.trim() ||
+    option.url?.trim() ||
+    option.notes?.trim() ||
+    (parseMoneyValue(option.price) || 0) > 0
+  )
+}
+
+function cleanPurchaseOptions(options) {
+  let selectedAlreadyUsed = false
+
+  return (options || [])
+    .filter(optionHasContent)
+    .map(option => {
+      const isSelected = Boolean(option.selected) && !selectedAlreadyUsed
+      if (isSelected) selectedAlreadyUsed = true
+
+      return {
+        label: option.label?.trim() || '',
+        store: option.store?.trim() || '',
+        price: parseMoneyValue(option.price),
+        url: option.url?.trim() || '',
+        notes: option.notes?.trim() || '',
+        selected: isSelected,
+      }
+    })
+}
+
+function optionPrice(option) {
+  return parseMoneyValue(option?.price) || 0
+}
+
+function selectedOption(item) {
+  return purchaseOptions(item).find(option => option.selected && optionPrice(option) > 0)
+}
+
+function lowestOption(item) {
+  return purchaseOptions(item)
+    .filter(option => optionPrice(option) > 0)
+    .sort((a, b) => optionPrice(a) - optionPrice(b))[0]
+}
+
+function itemEstimate(item) {
+  const selectedPrice = optionPrice(selectedOption(item))
+  return selectedPrice || Number(item.estimated_price) || 0
+}
+
+function hasOptionEstimate(item) {
+  return Boolean(selectedOption(item))
+}
+
+function addPurchaseOption() {
+  itemForm.value.purchase_options.push(emptyPurchaseOption())
+}
+
+function removePurchaseOption(index) {
+  itemForm.value.purchase_options.splice(index, 1)
+  if (itemForm.value.purchase_options.length === 0) itemForm.value.purchase_options.push(emptyPurchaseOption())
+}
+
+function selectPurchaseOption(index) {
+  itemForm.value.purchase_options = itemForm.value.purchase_options.map((option, optionIndex) => ({
+    ...option,
+    selected: optionIndex === index,
+  }))
+}
 
 function shouldCollapseNote(notes) {
   return (notes || '').length > 180 || (notes || '').split('\n').length > 4
@@ -332,8 +478,8 @@ async function copyLink() {
     <!-- Budget quick bar -->
     <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
       <div class="flex justify-between text-sm text-gray-400 mb-1">
-        <span>Total: {{ totalBudget.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}</span>
-        <span>Remaining: <span :class="remaining < 0 ? 'text-red-400' : 'text-green-400'">{{ remaining.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}</span></span>
+        <span>Total: {{ formatCurrency(totalBudget) }}</span>
+        <span>Remaining: <span :class="remaining < 0 ? 'text-red-400' : 'text-green-400'">{{ formatCurrency(remaining) }}</span></span>
       </div>
       <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
         <div class="h-full rounded-full transition-all" :class="remaining < 0 ? 'bg-red-500' : 'bg-indigo-500'" :style="{ width: percent(totalSpent, totalBudget) + '%' }"></div>
@@ -361,7 +507,7 @@ async function copyLink() {
       <div v-for="room in rooms" :key="room.id" class="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center justify-between gap-4">
         <div>
           <p class="text-white font-medium">{{ room.name }}</p>
-          <p class="text-sm text-gray-400">Budget: {{ Number(room.budget).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}</p>
+          <p class="text-sm text-gray-400">Budget: {{ formatCurrency(room.budget) }}</p>
           <div class="flex items-center gap-2 mt-1">
             <div class="w-24 h-1.5 bg-gray-800 rounded-full overflow-hidden">
               <div class="h-full bg-indigo-500 rounded-full" :style="{ width: percent(roomSpent(room.id), room.budget) + '%' }"></div>
@@ -413,25 +559,47 @@ async function copyLink() {
           </div>
         </div>
         <div class="flex flex-wrap gap-2 items-center">
-          <span class="text-sm text-indigo-300 font-medium">{{ Number(item.estimated_price).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}</span>
+          <span class="text-sm text-indigo-300 font-medium">{{ formatCurrency(itemEstimate(item)) }}</span>
+          <span class="text-xs text-gray-500">{{ hasOptionEstimate(item) ? 'Preferred option' : 'Manual estimate' }}</span>
+          <span v-if="lowestOption(item)" class="text-xs text-gray-500">Lowest: {{ formatCurrency(optionPrice(lowestOption(item))) }}</span>
           <span :class="priorityColors[item.priority]" class="text-xs capitalize">{{ item.priority }} priority</span>
           <span :class="statusColors[item.status]" class="text-xs px-2 py-0.5 rounded-full capitalize">{{ item.status }}</span>
         </div>
         <div v-if="item.notes" class="space-y-1">
-          <p class="text-sm text-gray-400 whitespace-pre-line break-words max-h-32 px-4 overflow-y-auto">{{ noteText(item) }}</p>
+          <p class="text-sm text-gray-400 whitespace-pre-line break-words max-h-32 overflow-y-auto">{{ noteText(item) }}</p>
           <button
             v-if="shouldCollapseNote(item.notes)"
             @click="toggleNote(item.id)"
             class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
           >{{ isNoteExpanded(item.id) ? 'Show less' : 'Show more' }}</button>
         </div>
-        <div v-if="item.vendor_links && item.vendor_links.length" class="flex flex-wrap gap-1">
-          <a
-            v-for="(link, i) in item.vendor_links" :key="i"
-            :href="vendorHref(link)" target="_blank" rel="noopener"
-            class="max-w-full truncate break-all text-xs text-indigo-400 hover:text-indigo-300 underline"
-            :title="vendorHref(link)"
-          >{{ vendorLabel(link, i) }}</a>
+        <div v-if="purchaseOptions(item).length" class="space-y-2">
+          <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Purchase options</p>
+          <div class="divide-y divide-gray-800 overflow-hidden rounded-lg border border-gray-800">
+            <div
+              v-for="(option, i) in purchaseOptions(item)" :key="i"
+              class="flex flex-wrap items-start gap-3 px-3 py-2"
+            >
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-medium text-gray-200">{{ option.label || vendorLabel(option, i) }}</p>
+                <p class="text-xs text-gray-500">
+                  <span v-if="option.store">{{ option.store }}</span>
+                  <span v-if="option.store && vendorHref(option)"> &middot; </span>
+                  <a
+                    v-if="vendorHref(option)"
+                    :href="vendorHref(option)" target="_blank" rel="noopener"
+                    class="text-indigo-400 hover:text-indigo-300 underline"
+                    :title="vendorHref(option)"
+                  >Open link</a>
+                </p>
+                <p v-if="option.notes" class="mt-1 text-xs text-gray-500 whitespace-pre-line break-words">{{ option.notes }}</p>
+              </div>
+              <div class="text-right">
+                <p v-if="optionPrice(option)" class="text-sm font-medium text-gray-200">{{ formatCurrency(optionPrice(option)) }}</p>
+                <p v-if="option.selected" class="text-xs text-green-400">Preferred</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -440,17 +608,17 @@ async function copyLink() {
     <div v-if="activeTab === 'budget'" class="space-y-6">
       <div>
         <h2 class="text-lg font-semibold text-white mb-4">Budget Overview</h2>
-        <div class="grid grid-cols-3 gap-4">
+        <div class="grid gap-4 sm:grid-cols-3">
           <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <p class="text-2xl font-bold text-white">{{ totalBudget.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}</p>
+            <p class="text-2xl font-bold text-white">{{ formatCurrency(totalBudget) }}</p>
             <p class="text-xs text-gray-500 mt-1">Total Budget</p>
           </div>
           <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <p class="text-2xl font-bold text-indigo-400">{{ totalSpent.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}</p>
-            <p class="text-xs text-gray-500 mt-1">Planned Cost</p>
+            <p class="text-2xl font-bold text-indigo-400">{{ formatCurrency(totalSpent) }}</p>
+            <p class="text-xs text-gray-500 mt-1">Current Estimate</p>
           </div>
           <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <p class="text-2xl font-bold" :class="remaining < 0 ? 'text-red-400' : 'text-green-400'">{{ remaining.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}</p>
+            <p class="text-2xl font-bold" :class="remaining < 0 ? 'text-red-400' : 'text-green-400'">{{ formatCurrency(remaining) }}</p>
             <p class="text-xs text-gray-500 mt-1">Remaining</p>
           </div>
         </div>
@@ -463,9 +631,9 @@ async function copyLink() {
           <div class="flex justify-between items-center mb-2">
             <p class="text-white font-medium">{{ room.name }}</p>
             <p class="text-sm text-gray-400">
-              {{ roomSpent(room.id).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}
+              {{ formatCurrency(roomSpent(room.id)) }}
               /
-              {{ Number(room.budget).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) }}
+              {{ formatCurrency(room.budget) }}
             </p>
           </div>
           <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
@@ -500,23 +668,23 @@ async function copyLink() {
 
     <!-- Item Form Modal -->
     <div v-if="showItemForm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto" @click.self="!savingItem && (showItemForm = false)">
-      <form @submit.prevent="saveItem" class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-sm space-y-3 my-8">
+      <form @submit.prevent="saveItem" class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-xl space-y-3 my-8">
         <h3 class="text-lg font-semibold text-white">{{ editingItem ? 'Edit Item' : 'Add Item' }}</h3>
         <input ref="itemNameInput" v-model="itemForm.name" :disabled="savingItem" placeholder="Item name" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500" />
         <select v-model="itemForm.room_id" :disabled="savingItem" required class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white disabled:opacity-60 focus:outline-none focus:border-indigo-500">
           <option value="" disabled>Select a room</option>
           <option v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</option>
         </select>
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid gap-2 sm:grid-cols-2">
           <select v-model="itemForm.type" :disabled="savingItem" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-60 focus:outline-none focus:border-indigo-500">
             <option value="furniture">Furniture</option>
             <option value="appliance">Appliance</option>
             <option value="decoration">Decoration</option>
             <option value="other">Other</option>
           </select>
-          <input v-model="itemForm.estimated_price" :disabled="savingItem" type="number" step="0.01" placeholder="Price" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500" />
+          <input v-model="itemForm.estimated_price" :disabled="savingItem" type="number" step="0.01" placeholder="Manual estimate" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500" />
         </div>
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid gap-2 sm:grid-cols-2">
           <select v-model="itemForm.priority" :disabled="savingItem" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-60 focus:outline-none focus:border-indigo-500">
             <option value="low">Low Priority</option>
             <option value="medium">Medium Priority</option>
@@ -528,7 +696,58 @@ async function copyLink() {
             <option value="bought">Bought</option>
           </select>
         </div>
-        <textarea v-model="itemForm.vendor_links" :disabled="savingItem" placeholder="Vendor links (JSON array, e.g. [{&quot;label&quot;:&quot;Amazon&quot;,&quot;url&quot;:&quot;https://...&quot;}])" rows="2" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"></textarea>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between gap-3">
+            <h4 class="text-sm font-medium text-gray-300">Purchase options</h4>
+            <button
+              type="button"
+              :disabled="savingItem"
+              @click="addPurchaseOption"
+              class="shrink-0 rounded-lg bg-gray-800 px-2 py-1 text-xs text-gray-300 transition-colors hover:bg-gray-700 disabled:text-gray-500"
+            >+ Add Option</button>
+          </div>
+
+          <div
+            v-for="(option, index) in itemForm.purchase_options" :key="index"
+            class="space-y-2 rounded-lg border border-gray-800 p-3"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <label class="flex items-center gap-2 text-xs text-gray-400">
+                <input
+                  type="radio"
+                  name="preferred-option"
+                  :checked="option.selected"
+                  :disabled="savingItem"
+                  @change="selectPurchaseOption(index)"
+                  class="accent-indigo-500"
+                />
+                Preferred
+              </label>
+              <button
+                type="button"
+                :disabled="savingItem"
+                @click="removePurchaseOption(index)"
+                class="text-xs text-red-300 transition-colors hover:text-red-200 disabled:text-gray-500"
+              >Remove</button>
+            </div>
+            <input v-model="option.label" :disabled="savingItem" placeholder="Model or name" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500" />
+            <div class="grid gap-2 sm:grid-cols-2">
+              <input v-model="option.store" :disabled="savingItem" placeholder="Store" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500" />
+              <input
+                :value="option.price"
+                :disabled="savingItem"
+                type="text"
+                inputmode="numeric"
+                placeholder="R$ 0,00"
+                @focus="focusCurrencyInput(option)"
+                @input="updateCurrencyInput(option, $event)"
+                class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <input v-model="option.url" :disabled="savingItem" type="url" placeholder="URL" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500" />
+            <textarea v-model="option.notes" :disabled="savingItem" placeholder="Option notes" rows="2" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"></textarea>
+          </div>
+        </div>
         <textarea v-model="itemForm.notes" :disabled="savingItem" placeholder="Notes (dimensions, color, etc.)" rows="2" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"></textarea>
         <p v-if="formError" class="text-sm text-red-400">{{ formError }}</p>
         <div class="flex gap-2">
