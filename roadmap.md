@@ -11,24 +11,24 @@ Roadmap organized by priority. Higher priority items should improve daily usabil
 - [x] Add Enter key support to save room and item modals.
 - [x] Validate required fields before saving rooms and items.
 - [x] Disable `Add Item` when no room exists yet.
-- Show a clear validation error when vendor links are not valid JSON.
-- [~] Keep modal actions consistent: `Save`, `Cancel`, loading/disabled states, and error feedback. Error feedback is in place; loading/disabled states still need implementation.
+- [x] Show a clear validation error when vendor links are not valid JSON.
+- [x] Keep modal actions consistent: `Save`, `Cancel`, loading/disabled states, and error feedback.
 - [x] Autofocus the first field when room and item modals open.
 - [x] Keep the home detail page visible for non-fatal action errors instead of replacing it with a full-page error.
 
 ### Notes and links display
 
-- Add line breaks or max-height handling for long notes.
-- Add `show more / show less` behavior when notes are too large.
-- Prevent long URLs from breaking the layout on mobile.
-- Add link aliases so vendor URLs appear as short readable labels.
+- [x] Add line breaks or max-height handling for long notes.
+- [x] Add `show more / show less` behavior when notes are too large.
+- [x] Prevent long URLs from breaking the layout on mobile.
+- [x] Add link aliases so vendor URLs appear as short readable labels.
 
 ### Small quality fixes
 
-- Show visual feedback after copying the home link.
-- Add consistent visual feedback for user actions: clickable button states, success confirmation, transient success/error messages, and clear modal feedback after saves/deletes.
+- [x] Show visual feedback after copying the home link.
+- [x] Add consistent visual feedback for user actions: clickable button states, success confirmation, transient success/error messages, and clear modal feedback after saves/deletes.
 - [x] Improve `Join Existing` to accept either a home ID or a full URL.
-- Review budget tab item count logic and avoid using `items.value` directly in the template.
+- [x] Review budget tab item count logic and avoid using `items.value` directly in the template.
 
 ## P1 - Purchase status, budget clarity, and currency
 
