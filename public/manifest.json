@@ -1,0 +1,9 @@
+{
+  "name": "Homemade Organizer",
+  "short_name": "Organizer",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#4f46e5",
+  "icons": []
+}

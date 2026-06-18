@@ -141,7 +141,7 @@ const filteredItems = computed(() => {
 })
 
 function emptyPurchaseOption() {
-  return { label: '', store: '', price: '', url: '', notes: '', selected: false }
+  return { label: '', store: '', price: '', url: '', notes: '', selected: false, purchased: false }
 }
 
 function openAddItem() {
@@ -304,6 +304,7 @@ function normalizePurchaseOption(option, index = 0) {
       url: option,
       notes: '',
       selected: false,
+      purchased: false,
     }
   }
 
@@ -316,6 +317,7 @@ function normalizePurchaseOption(option, index = 0) {
     url: option?.url || '',
     notes: option?.notes || '',
     selected: Boolean(option?.selected || option?.preferred),
+    purchased: Boolean(option?.purchased),
   }
 }
 
@@ -350,6 +352,7 @@ function cleanPurchaseOptions(options) {
         url: option.url?.trim() || '',
         notes: option.notes?.trim() || '',
         selected: isSelected,
+        purchased: Boolean(option.purchased),
       }
     })
 }
@@ -391,6 +394,18 @@ function selectPurchaseOption(index) {
     ...option,
     selected: optionIndex === index,
   }))
+}
+
+function moveOptionUp(index) {
+  if (index <= 0) return
+  const options = itemForm.value.purchase_options
+  ;[options[index - 1], options[index]] = [options[index], options[index - 1]]
+}
+
+function moveOptionDown(index) {
+  const options = itemForm.value.purchase_options
+  if (index >= options.length - 1) return
+  ;[options[index + 1], options[index]] = [options[index], options[index + 1]]
 }
 
 function shouldCollapseNote(notes) {
@@ -596,7 +611,8 @@ async function copyLink() {
               </div>
               <div class="text-right">
                 <p v-if="optionPrice(option)" class="text-sm font-medium text-gray-200">{{ formatCurrency(optionPrice(option)) }}</p>
-                <p v-if="option.selected" class="text-xs text-green-400">Preferred</p>
+                <p v-if="option.purchased" class="text-xs text-green-300">Purchased</p>
+                <p v-else-if="option.selected" class="text-xs text-green-400">Preferred</p>
               </div>
             </div>
           </div>
@@ -667,92 +683,130 @@ async function copyLink() {
     </div>
 
     <!-- Item Form Modal -->
-    <div v-if="showItemForm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto" @click.self="!savingItem && (showItemForm = false)">
-      <form @submit.prevent="saveItem" class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-xl space-y-3 my-8">
-        <h3 class="text-lg font-semibold text-white">{{ editingItem ? 'Edit Item' : 'Add Item' }}</h3>
-        <input ref="itemNameInput" v-model="itemForm.name" :disabled="savingItem" placeholder="Item name" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500" />
-        <select v-model="itemForm.room_id" :disabled="savingItem" required class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white disabled:opacity-60 focus:outline-none focus:border-indigo-500">
-          <option value="" disabled>Select a room</option>
-          <option v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</option>
-        </select>
-        <div class="grid gap-2 sm:grid-cols-2">
-          <select v-model="itemForm.type" :disabled="savingItem" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-60 focus:outline-none focus:border-indigo-500">
-            <option value="furniture">Furniture</option>
-            <option value="appliance">Appliance</option>
-            <option value="decoration">Decoration</option>
-            <option value="other">Other</option>
-          </select>
-          <input v-model="itemForm.estimated_price" :disabled="savingItem" type="number" step="0.01" placeholder="Manual estimate" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500" />
+    <div v-if="showItemForm" class="fixed inset-0 z-50 bg-black/60 sm:flex sm:items-center sm:justify-center sm:p-4 sm:overflow-y-auto" @click.self="!savingItem && (showItemForm = false)">
+      <form @submit.prevent="saveItem" class="bg-gray-900 border border-gray-800 sm:rounded-xl p-6 w-full sm:max-w-xl flex flex-col max-sm:fixed max-sm:inset-0 max-sm:rounded-none max-sm:border-0 max-sm:h-[100dvh] sm:my-8">
+        <!-- Fixed header -->
+        <div class="shrink-0">
+          <h3 class="text-lg font-semibold text-white">{{ editingItem ? 'Edit Item' : 'Add Item' }}</h3>
         </div>
-        <div class="grid gap-2 sm:grid-cols-2">
-          <select v-model="itemForm.priority" :disabled="savingItem" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-60 focus:outline-none focus:border-indigo-500">
-            <option value="low">Low Priority</option>
-            <option value="medium">Medium Priority</option>
-            <option value="high">High Priority</option>
-          </select>
-          <select v-model="itemForm.status" :disabled="savingItem" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-60 focus:outline-none focus:border-indigo-500">
-            <option value="planned">Planned</option>
-            <option value="researching">Researching</option>
-            <option value="bought">Bought</option>
-          </select>
-        </div>
-        <div class="space-y-2">
-          <div class="flex items-center justify-between gap-3">
-            <h4 class="text-sm font-medium text-gray-300">Purchase options</h4>
-            <button
-              type="button"
-              :disabled="savingItem"
-              @click="addPurchaseOption"
-              class="shrink-0 rounded-lg bg-gray-800 px-2 py-1 text-xs text-gray-300 transition-colors hover:bg-gray-700 disabled:text-gray-500"
-            >+ Add Option</button>
-          </div>
 
-          <div
-            v-for="(option, index) in itemForm.purchase_options" :key="index"
-            class="space-y-2 rounded-lg border border-gray-800 p-3"
-          >
+        <!-- Scrollable body -->
+        <div class="flex-1 overflow-y-auto space-y-3 py-3 max-sm:pt-4">
+          <input ref="itemNameInput" v-model="itemForm.name" :disabled="savingItem" placeholder="Item name" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500" />
+          <select v-model="itemForm.room_id" :disabled="savingItem" required class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white disabled:opacity-60 focus:outline-none focus:border-indigo-500">
+            <option value="" disabled>Select a room</option>
+            <option v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</option>
+          </select>
+          <div class="grid gap-2 sm:grid-cols-2">
+            <select v-model="itemForm.type" :disabled="savingItem" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-60 focus:outline-none focus:border-indigo-500">
+              <option value="furniture">Furniture</option>
+              <option value="appliance">Appliance</option>
+              <option value="decoration">Decoration</option>
+              <option value="other">Other</option>
+            </select>
+            <input v-model="itemForm.estimated_price" :disabled="savingItem" type="number" step="0.01" placeholder="Manual estimate" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500" />
+          </div>
+          <div class="grid gap-2 sm:grid-cols-2">
+            <select v-model="itemForm.priority" :disabled="savingItem" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-60 focus:outline-none focus:border-indigo-500">
+              <option value="low">Low Priority</option>
+              <option value="medium">Medium Priority</option>
+              <option value="high">High Priority</option>
+            </select>
+            <select v-model="itemForm.status" :disabled="savingItem" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-60 focus:outline-none focus:border-indigo-500">
+              <option value="planned">Planned</option>
+              <option value="researching">Researching</option>
+              <option value="bought">Bought</option>
+            </select>
+          </div>
+          <div class="space-y-2">
             <div class="flex items-center justify-between gap-3">
-              <label class="flex items-center gap-2 text-xs text-gray-400">
-                <input
-                  type="radio"
-                  name="preferred-option"
-                  :checked="option.selected"
-                  :disabled="savingItem"
-                  @change="selectPurchaseOption(index)"
-                  class="accent-indigo-500"
-                />
-                Preferred
-              </label>
+              <h4 class="text-sm font-medium text-gray-300">Purchase options</h4>
               <button
                 type="button"
                 :disabled="savingItem"
-                @click="removePurchaseOption(index)"
-                class="text-xs text-red-300 transition-colors hover:text-red-200 disabled:text-gray-500"
-              >Remove</button>
+                @click="addPurchaseOption"
+                class="shrink-0 rounded-lg bg-gray-800 px-2 py-1 text-xs text-gray-300 transition-colors hover:bg-gray-700 disabled:text-gray-500"
+              >+ Add Option</button>
             </div>
-            <input v-model="option.label" :disabled="savingItem" placeholder="Model or name" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500" />
-            <div class="grid gap-2 sm:grid-cols-2">
-              <input v-model="option.store" :disabled="savingItem" placeholder="Store" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500" />
-              <input
-                :value="option.price"
-                :disabled="savingItem"
-                type="text"
-                inputmode="numeric"
-                placeholder="R$ 0,00"
-                @focus="focusCurrencyInput(option)"
-                @input="updateCurrencyInput(option, $event)"
-                class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"
-              />
+
+            <div
+              v-for="(option, index) in itemForm.purchase_options" :key="index"
+              class="space-y-2 rounded-lg border border-gray-800 p-3"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1">
+                  <button
+                    type="button"
+                    :disabled="savingItem || index === 0"
+                    @click="moveOptionUp(index)"
+                    class="text-gray-500 hover:text-gray-300 disabled:text-gray-700 disabled:cursor-default transition-colors"
+                    title="Move up"
+                  >&#9650;</button>
+                  <button
+                    type="button"
+                    :disabled="savingItem || index >= itemForm.purchase_options.length - 1"
+                    @click="moveOptionDown(index)"
+                    class="text-gray-500 hover:text-gray-300 disabled:text-gray-700 disabled:cursor-default transition-colors"
+                    title="Move down"
+                  >&#9660;</button>
+                </div>
+                <div class="flex items-center gap-3">
+                  <label class="flex items-center gap-2 text-xs text-gray-400">
+                    <input
+                      type="checkbox"
+                      v-model="option.purchased"
+                      :disabled="savingItem"
+                      class="accent-green-500"
+                    />
+                    Purchased
+                  </label>
+                  <label class="flex items-center gap-2 text-xs text-gray-400">
+                    <input
+                      type="radio"
+                      name="preferred-option"
+                      :checked="option.selected"
+                      :disabled="savingItem"
+                      @change="selectPurchaseOption(index)"
+                      class="accent-indigo-500"
+                    />
+                    Preferred
+                  </label>
+                  <button
+                    type="button"
+                    :disabled="savingItem"
+                    @click="removePurchaseOption(index)"
+                    class="text-xs text-red-300 transition-colors hover:text-red-200 disabled:text-gray-500"
+                  >Remove</button>
+                </div>
+              </div>
+              <input v-model="option.label" :disabled="savingItem" placeholder="Model or name" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500" />
+              <div class="grid gap-2 sm:grid-cols-2">
+                <input v-model="option.store" :disabled="savingItem" placeholder="Store" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500" />
+                <input
+                  :value="option.price"
+                  :disabled="savingItem"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="R$ 0,00"
+                  @focus="focusCurrencyInput(option)"
+                  @input="updateCurrencyInput(option, $event)"
+                  class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <input v-model="option.url" :disabled="savingItem" type="url" placeholder="URL" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500" />
+              <textarea v-model="option.notes" :disabled="savingItem" placeholder="Option notes" rows="2" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"></textarea>
             </div>
-            <input v-model="option.url" :disabled="savingItem" type="url" placeholder="URL" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500" />
-            <textarea v-model="option.notes" :disabled="savingItem" placeholder="Option notes" rows="2" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"></textarea>
           </div>
+          <textarea v-model="itemForm.notes" :disabled="savingItem" placeholder="Notes (dimensions, color, etc.)" rows="2" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"></textarea>
         </div>
-        <textarea v-model="itemForm.notes" :disabled="savingItem" placeholder="Notes (dimensions, color, etc.)" rows="2" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"></textarea>
-        <p v-if="formError" class="text-sm text-red-400">{{ formError }}</p>
-        <div class="flex gap-2">
-          <button type="submit" :disabled="savingItem" class="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium py-2 rounded-lg transition-colors">{{ savingItem ? 'Saving...' : 'Save' }}</button>
-          <button type="button" :disabled="savingItem" @click="showItemForm = false" class="flex-1 bg-gray-800 hover:bg-gray-700 disabled:text-gray-500 text-gray-300 py-2 rounded-lg transition-colors">Cancel</button>
+
+        <!-- Fixed footer -->
+        <div class="shrink-0 pt-3 border-t border-gray-800">
+          <p v-if="formError" class="text-sm text-red-400 mb-2">{{ formError }}</p>
+          <div class="flex gap-2">
+            <button type="submit" :disabled="savingItem" class="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium py-2 rounded-lg transition-colors">{{ savingItem ? 'Saving...' : 'Save' }}</button>
+            <button type="button" :disabled="savingItem" @click="showItemForm = false" class="flex-1 bg-gray-800 hover:bg-gray-700 disabled:text-gray-500 text-gray-300 py-2 rounded-lg transition-colors">Cancel</button>
+          </div>
         </div>
       </form>
     </div>
