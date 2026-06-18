@@ -8,5 +8,7 @@ app.use(router)
 app.mount('#app')
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js')
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+  });
 }
