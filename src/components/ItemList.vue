@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { formatCurrency } from '../lib/currency'
 import {
   itemEstimate,
@@ -23,6 +23,24 @@ const statusColors = {
   bought: 'bg-green-900 text-green-300',
 }
 const expandedNoteIds = ref(new Set())
+
+const displayItems = computed(() =>
+  props.items.map((item) => {
+    const options = purchaseOptionsFromItem(item)
+    const lowest = lowestOption(item)
+    return {
+      item,
+      options,
+      lowest,
+      roomName: getRoomName(item.room_id),
+      estimate: itemEstimate(item),
+      hasOptionEstimate: hasOptionEstimate(item),
+      noteText: noteText(item),
+      shouldCollapseNote: shouldCollapseNote(item.notes),
+      isNoteExpanded: isNoteExpanded(item.id),
+    }
+  }),
+)
 
 function getRoomName(roomId) {
   return props.rooms.find((r) => r.id === roomId)?.name || 'Unknown'
@@ -66,22 +84,28 @@ function toggleNote(itemId) {
 </script>
 
 <template>
-  <div v-if="items.length === 0" class="text-gray-500 text-center py-12">No items yet. Add one to get started.</div>
-  <div v-for="item in items" :key="item.id" class="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-2">
+  <div v-if="displayItems.length === 0" class="text-gray-500 text-center py-12">
+    No items yet. Add one to get started.
+  </div>
+  <div
+    v-for="displayItem in displayItems"
+    :key="displayItem.item.id"
+    class="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-2"
+  >
     <div class="flex justify-between items-start gap-3">
       <div>
-        <p class="text-white font-medium">{{ item.name }}</p>
-        <p class="text-xs text-gray-500">{{ getRoomName(item.room_id) }} &middot; {{ item.type }}</p>
+        <p class="text-white font-medium">{{ displayItem.item.name }}</p>
+        <p class="text-xs text-gray-500">{{ displayItem.roomName }} &middot; {{ displayItem.item.type }}</p>
       </div>
       <div class="flex gap-1 shrink-0">
         <button
-          @click="$emit('edit', item)"
+          @click="$emit('edit', displayItem.item)"
           class="px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors"
         >
           Edit
         </button>
         <button
-          @click="$emit('delete', item)"
+          @click="$emit('delete', displayItem.item)"
           class="px-2 py-1 text-xs bg-red-900 hover:bg-red-800 text-red-300 rounded transition-colors"
         >
           Del
@@ -89,49 +113,51 @@ function toggleNote(itemId) {
       </div>
     </div>
     <div class="flex flex-wrap gap-2 items-center">
-      <span class="text-sm text-indigo-300 font-medium">{{ formatCurrency(itemEstimate(item)) }}</span>
-      <span class="text-xs text-gray-500">{{ hasOptionEstimate(item) ? 'Preferred option' : 'Manual estimate' }}</span>
-      <span v-if="lowestOption(item)" class="text-xs text-gray-500"
-        >Lowest: {{ formatCurrency(optionPrice(lowestOption(item))) }}</span
+      <span class="text-sm text-indigo-300 font-medium">{{ formatCurrency(displayItem.estimate) }}</span>
+      <span class="text-xs text-gray-500">{{
+        displayItem.hasOptionEstimate ? 'Preferred option' : 'Manual estimate'
+      }}</span>
+      <span v-if="displayItem.lowest" class="text-xs text-gray-500"
+        >Lowest: {{ formatCurrency(optionPrice(displayItem.lowest)) }}</span
       >
-      <span :class="priorityColors[item.priority]" class="text-xs capitalize">{{ item.priority }} priority</span>
-      <span :class="statusColors[item.status]" class="text-xs px-2 py-0.5 rounded-full capitalize">{{
-        item.status
+      <span :class="priorityColors[displayItem.item.priority]" class="text-xs capitalize"
+        >{{ displayItem.item.priority }} priority</span
+      >
+      <span :class="statusColors[displayItem.item.status]" class="text-xs px-2 py-0.5 rounded-full capitalize">{{
+        displayItem.item.status
       }}</span>
       <button
-        v-if="!purchaseOptionsFromItem(item).length"
-        @click="$emit('quickAdd', item)"
+        v-if="!displayItem.options.length"
+        @click="$emit('quickAdd', displayItem.item)"
         class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors ml-1"
       >
         + Add option
       </button>
     </div>
-    <div v-if="item.notes" class="space-y-1">
-      <p class="text-sm text-gray-400 whitespace-pre-line break-words max-h-32 overflow-y-auto">{{ noteText(item) }}</p>
+    <div v-if="displayItem.item.notes" class="space-y-1">
+      <p class="text-sm text-gray-400 whitespace-pre-line break-words max-h-32 overflow-y-auto">
+        {{ displayItem.noteText }}
+      </p>
       <button
-        v-if="shouldCollapseNote(item.notes)"
-        @click="toggleNote(item.id)"
+        v-if="displayItem.shouldCollapseNote"
+        @click="toggleNote(displayItem.item.id)"
         class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
       >
-        {{ isNoteExpanded(item.id) ? 'Show less' : 'Show more' }}
+        {{ displayItem.isNoteExpanded ? 'Show less' : 'Show more' }}
       </button>
     </div>
-    <div v-if="purchaseOptionsFromItem(item).length" class="space-y-2">
+    <div v-if="displayItem.options.length" class="space-y-2">
       <div class="flex items-center justify-between gap-2">
         <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Purchase options</p>
         <button
-          @click="$emit('quickAdd', item)"
+          @click="$emit('quickAdd', displayItem.item)"
           class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
         >
           + Add option
         </button>
       </div>
       <div class="divide-y divide-gray-800 overflow-hidden rounded-lg border border-gray-800">
-        <div
-          v-for="(option, i) in purchaseOptionsFromItem(item)"
-          :key="i"
-          class="flex flex-wrap items-start gap-3 px-3 py-2"
-        >
+        <div v-for="(option, i) in displayItem.options" :key="i" class="flex flex-wrap items-start gap-3 px-3 py-2">
           <div class="min-w-0 flex-1">
             <p class="truncate text-sm font-medium text-gray-200">{{ option.label || vendorLabel(option, i) }}</p>
             <p class="text-xs text-gray-500">

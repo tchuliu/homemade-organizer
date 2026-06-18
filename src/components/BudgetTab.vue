@@ -11,13 +11,23 @@ const props = defineProps({
 
 const totalSpent = computed(() => props.items.reduce((sum, i) => sum + itemEstimate(i), 0))
 const remaining = computed(() => props.totalBudget - totalSpent.value)
+const roomSummaries = computed(() =>
+  props.rooms.map((room) => {
+    const spent = roomSpent(room.id)
+    const budget = Number(room.budget) || 0
+    return {
+      ...room,
+      spent,
+      budget,
+      itemCount: roomItemCount(room.id),
+      percentUsed: percent(spent, budget),
+      isOverBudget: spent > budget,
+    }
+  }),
+)
 
 function roomSpent(roomId) {
   return props.items.filter((i) => i.room_id === roomId).reduce((sum, i) => sum + itemEstimate(i), 0)
-}
-
-function roomBudget(roomId) {
-  return Number(props.rooms.find((r) => r.id === roomId)?.budget) || 0
 }
 
 function roomItemCount(roomId) {
@@ -54,12 +64,12 @@ function percent(spent, budget) {
 
     <div>
       <h3 class="text-md font-semibold text-white mb-3">Per Room</h3>
-      <div v-if="rooms.length === 0" class="text-gray-500 text-center py-6">No rooms yet.</div>
-      <div v-for="room in rooms" :key="room.id" class="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-3">
+      <div v-if="roomSummaries.length === 0" class="text-gray-500 text-center py-6">No rooms yet.</div>
+      <div v-for="room in roomSummaries" :key="room.id" class="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-3">
         <div class="flex justify-between items-center mb-2">
           <p class="text-white font-medium">{{ room.name }}</p>
           <p class="text-sm text-gray-400">
-            {{ formatCurrency(roomSpent(room.id)) }}
+            {{ formatCurrency(room.spent) }}
             /
             {{ formatCurrency(room.budget) }}
           </p>
@@ -67,13 +77,11 @@ function percent(spent, budget) {
         <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
           <div
             class="h-full rounded-full transition-all"
-            :class="roomSpent(room.id) > room.budget ? 'bg-red-500' : 'bg-indigo-500'"
-            :style="{ width: percent(roomSpent(room.id), room.budget) + '%' }"
+            :class="room.isOverBudget ? 'bg-red-500' : 'bg-indigo-500'"
+            :style="{ width: room.percentUsed + '%' }"
           ></div>
         </div>
-        <p class="text-xs text-gray-500 mt-1">
-          {{ roomItemCount(room.id) }} items &middot; {{ percent(roomSpent(room.id), room.budget) }}% used
-        </p>
+        <p class="text-xs text-gray-500 mt-1">{{ room.itemCount }} items &middot; {{ room.percentUsed }}% used</p>
       </div>
     </div>
   </div>

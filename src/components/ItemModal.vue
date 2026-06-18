@@ -1,19 +1,18 @@
 <script setup>
-import { watch, ref, nextTick } from 'vue'
-import { formatCurrency, parseMoneyValue, formatCurrencyInput } from '../lib/currency'
+import { watch, nextTick, useTemplateRef } from 'vue'
+import { formatCurrency, formatCurrencyInput } from '../lib/currency'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
-  itemForm: { type: Object, required: true },
   rooms: { type: Array, default: () => [] },
   editingItem: { type: Object, default: null },
   saving: { type: Boolean, default: false },
   formError: { type: String, default: '' },
 })
 
+const itemForm = defineModel('itemForm', { type: Object, required: true })
 const emit = defineEmits(['close', 'save', 'addOption', 'removeOption', 'moveUp', 'moveDown', 'selectOption'])
-
-const itemNameInput = ref(null)
+const itemNameInput = useTemplateRef('itemNameInput')
 
 watch(
   () => props.show,
