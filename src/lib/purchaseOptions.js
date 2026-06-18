@@ -41,29 +41,27 @@ export function optionHasContent(option) {
     option.store?.trim() ||
     option.url?.trim() ||
     option.notes?.trim() ||
-    (parseMoneyValue(option.price) || 0) > 0
+    (parseMoneyValue(option.price) || 0) > 0,
   )
 }
 
 export function cleanPurchaseOptions(options) {
   let selectedAlreadyUsed = false
 
-  return (options || [])
-    .filter(optionHasContent)
-    .map(option => {
-      const isSelected = Boolean(option.selected) && !selectedAlreadyUsed
-      if (isSelected) selectedAlreadyUsed = true
+  return (options || []).filter(optionHasContent).map((option) => {
+    const isSelected = Boolean(option.selected) && !selectedAlreadyUsed
+    if (isSelected) selectedAlreadyUsed = true
 
-      return {
-        label: option.label?.trim() || '',
-        store: option.store?.trim() || '',
-        price: parseMoneyValue(option.price),
-        url: option.url?.trim() || '',
-        notes: option.notes?.trim() || '',
-        selected: isSelected,
-        purchased: Boolean(option.purchased),
-      }
-    })
+    return {
+      label: option.label?.trim() || '',
+      store: option.store?.trim() || '',
+      price: parseMoneyValue(option.price),
+      url: option.url?.trim() || '',
+      notes: option.notes?.trim() || '',
+      selected: isSelected,
+      purchased: Boolean(option.purchased),
+    }
+  })
 }
 
 export function optionPrice(option) {
@@ -71,12 +69,12 @@ export function optionPrice(option) {
 }
 
 export function selectedOption(item) {
-  return purchaseOptionsFromItem(item).find(option => option.selected && optionPrice(option) > 0)
+  return purchaseOptionsFromItem(item).find((option) => option.selected && optionPrice(option) > 0)
 }
 
 export function lowestOption(item) {
   return purchaseOptionsFromItem(item)
-    .filter(option => optionPrice(option) > 0)
+    .filter((option) => optionPrice(option) > 0)
     .sort((a, b) => optionPrice(a) - optionPrice(b))[0]
 }
 

@@ -13,15 +13,15 @@ const totalSpent = computed(() => props.items.reduce((sum, i) => sum + itemEstim
 const remaining = computed(() => props.totalBudget - totalSpent.value)
 
 function roomSpent(roomId) {
-  return props.items.filter(i => i.room_id === roomId).reduce((sum, i) => sum + itemEstimate(i), 0)
+  return props.items.filter((i) => i.room_id === roomId).reduce((sum, i) => sum + itemEstimate(i), 0)
 }
 
 function roomBudget(roomId) {
-  return Number(props.rooms.find(r => r.id === roomId)?.budget) || 0
+  return Number(props.rooms.find((r) => r.id === roomId)?.budget) || 0
 }
 
 function roomItemCount(roomId) {
-  return props.items.filter(i => i.room_id === roomId).length
+  return props.items.filter((i) => i.room_id === roomId).length
 }
 
 function percent(spent, budget) {
@@ -44,7 +44,9 @@ function percent(spent, budget) {
           <p class="text-xs text-gray-500 mt-1">Current Estimate</p>
         </div>
         <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-          <p class="text-2xl font-bold" :class="remaining < 0 ? 'text-red-400' : 'text-green-400'">{{ formatCurrency(remaining) }}</p>
+          <p class="text-2xl font-bold" :class="remaining < 0 ? 'text-red-400' : 'text-green-400'">
+            {{ formatCurrency(remaining) }}
+          </p>
           <p class="text-xs text-gray-500 mt-1">Remaining</p>
         </div>
       </div>
@@ -70,8 +72,7 @@ function percent(spent, budget) {
           ></div>
         </div>
         <p class="text-xs text-gray-500 mt-1">
-          {{ roomItemCount(room.id) }} items &middot;
-          {{ percent(roomSpent(room.id), room.budget) }}% used
+          {{ roomItemCount(room.id) }} items &middot; {{ percent(roomSpent(room.id), room.budget) }}% used
         </p>
       </div>
     </div>

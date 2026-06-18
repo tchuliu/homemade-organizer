@@ -3,12 +3,16 @@
 ## Build & run
 
 ```bash
-npm run dev      # Vite dev server
-npm run build    # Vite production build
-npm run preview  # Vite preview (serve dist/)
+npm run dev         # Vite dev server
+npm run build       # Vite production build
+npm run preview     # Vite preview (serve dist/)
+npm run format      # Prettier (write)
+npm run format:check # Prettier (check only)
 ```
 
-No linter/formatter configured yet.
+## Formatter
+
+**Prettier** — config in `.prettierrc`: single quotes, no semicolons, trailing commas, 120 print width.
 
 ## Tech stack
 
@@ -30,9 +34,17 @@ src/
   views/
     HomeView.vue    — landing page (create/join home)
     HomeDetail.vue  — main organizer view (rooms, items, budget)
+  components/
+    BudgetBar.vue      — total budget progress bar
+    BudgetTab.vue      — per-room budget breakdown
+    ItemList.vue       — item cards with purchase options
+    ItemModal.vue      — add/edit item modal (fullscreen mobile)
+    QuickAddOption.vue — mini modal to add purchase option inline
   lib/
-    supabase.js     — Supabase client singleton
-    recentHomes.js  — localStorage recent homes helper
+    supabase.js        — Supabase client singleton
+    recentHomes.js     — localStorage recent homes helper
+    currency.js        — BRL formatCurrency, parseMoneyValue
+    purchaseOptions.js — option normalization, cleaning, estimates
 ```
 
 ## Data model (Supabase)
@@ -43,7 +55,7 @@ Tables: `homes`, `rooms`, `items` (see `supabase-schema.sql`).
 
 ## Conventions
 
-- Currency: **BRL / pt-BR** — use shared `formatCurrency(value)`. Currently defined inline in `HomeDetail.vue:264`; future extraction to `src/lib/currency.js`.
+- Currency: **BRL / pt-BR** — use shared `formatCurrency(value)` from `src/lib/currency.js`.
 - All UI text in English for now; BRL is the default display currency.
 - Dark theme (`bg-gray-950 text-gray-100`).
 - Form modals: autofocus first field, Enter to submit, validate before save, show loading/error states.
