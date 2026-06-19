@@ -25,20 +25,17 @@ watch(
 <template>
   <div
     v-if="show"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
     @click.self="!saving && emit('close')"
   >
-    <form
-      @submit.prevent="emit('save')"
-      class="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-sm space-y-4"
-    >
-      <h3 class="text-lg font-semibold text-white">{{ editingRoom ? 'Edit Room' : 'Add Room' }}</h3>
+    <form @submit.prevent="emit('save')" class="panel w-full max-w-sm space-y-4">
+      <h3 class="section-title">{{ editingRoom ? 'Edit Room' : 'Add Room' }}</h3>
       <input
         ref="roomNameInput"
         v-model="roomForm.name"
         :disabled="saving"
         placeholder="Room name"
-        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"
+        class="field disabled:opacity-60"
       />
       <input
         v-model="roomForm.budget"
@@ -46,23 +43,14 @@ watch(
         type="number"
         step="0.01"
         placeholder="Budget"
-        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"
+        class="field disabled:opacity-60"
       />
-      <p v-if="formError" class="text-sm text-red-400">{{ formError }}</p>
+      <p v-if="formError" class="text-sm" style="color: var(--overrun)">{{ formError }}</p>
       <div class="flex gap-2">
-        <button
-          type="submit"
-          :disabled="saving"
-          class="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium py-2 rounded-lg transition-colors"
-        >
+        <button type="submit" :disabled="saving" class="btn-primary flex-1 py-2.5">
           {{ saving ? 'Saving...' : 'Save' }}
         </button>
-        <button
-          type="button"
-          :disabled="saving"
-          @click="emit('close')"
-          class="flex-1 bg-gray-800 hover:bg-gray-700 disabled:text-gray-500 text-gray-300 py-2 rounded-lg transition-colors"
-        >
+        <button type="button" :disabled="saving" @click="emit('close')" class="btn-secondary flex-1 py-2.5">
           Cancel
         </button>
       </div>

@@ -42,16 +42,16 @@ function updateCurrencyInput(option, event) {
 <template>
   <div
     v-if="show"
-    class="fixed inset-0 z-50 bg-black/60 sm:flex sm:items-center sm:justify-center sm:p-4 sm:overflow-y-auto"
+    class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:p-4 sm:overflow-y-auto"
     @click.self="!saving && emit('close')"
   >
     <form
       @submit.prevent="emit('save')"
-      class="bg-gray-900 border border-gray-800 sm:rounded-xl p-6 w-full sm:max-w-xl flex flex-col max-sm:fixed max-sm:inset-0 max-sm:rounded-none max-sm:border-0 max-sm:h-[100dvh] sm:my-8"
+      class="panel w-full sm:max-w-xl flex flex-col max-sm:fixed max-sm:inset-0 max-sm:rounded-none max-sm:border-0 max-sm:h-[100dvh] sm:my-8"
     >
       <!-- Fixed header -->
       <div class="shrink-0">
-        <h3 class="text-lg font-semibold text-white">{{ editingItem ? 'Edit Item' : 'Add Item' }}</h3>
+        <h3 class="section-title">{{ editingItem ? 'Edit Item' : 'Add Item' }}</h3>
       </div>
 
       <!-- Scrollable body -->
@@ -61,23 +61,14 @@ function updateCurrencyInput(option, event) {
           v-model="itemForm.name"
           :disabled="saving"
           placeholder="Item name"
-          class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"
+          class="field disabled:opacity-60"
         />
-        <select
-          v-model="itemForm.room_id"
-          :disabled="saving"
-          required
-          class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white disabled:opacity-60 focus:outline-none focus:border-indigo-500"
-        >
+        <select v-model="itemForm.room_id" :disabled="saving" required class="field disabled:opacity-60">
           <option value="" disabled>Select a room</option>
           <option v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</option>
         </select>
         <div class="grid gap-2 sm:grid-cols-2">
-          <select
-            v-model="itemForm.type"
-            :disabled="saving"
-            class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-60 focus:outline-none focus:border-indigo-500"
-          >
+          <select v-model="itemForm.type" :disabled="saving" class="field text-sm disabled:opacity-60">
             <option value="furniture">Furniture</option>
             <option value="appliance">Appliance</option>
             <option value="decoration">Decoration</option>
@@ -89,24 +80,16 @@ function updateCurrencyInput(option, event) {
             type="number"
             step="0.01"
             placeholder="Manual estimate"
-            class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"
+            class="field text-sm disabled:opacity-60"
           />
         </div>
         <div class="grid gap-2 sm:grid-cols-2">
-          <select
-            v-model="itemForm.priority"
-            :disabled="saving"
-            class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-60 focus:outline-none focus:border-indigo-500"
-          >
+          <select v-model="itemForm.priority" :disabled="saving" class="field text-sm disabled:opacity-60">
             <option value="low">Low Priority</option>
             <option value="medium">Medium Priority</option>
             <option value="high">High Priority</option>
           </select>
-          <select
-            v-model="itemForm.status"
-            :disabled="saving"
-            class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white disabled:opacity-60 focus:outline-none focus:border-indigo-500"
-          >
+          <select v-model="itemForm.status" :disabled="saving" class="field text-sm disabled:opacity-60">
             <option value="planned">Planned</option>
             <option value="researching">Researching</option>
             <option value="bought">Bought</option>
@@ -114,29 +97,27 @@ function updateCurrencyInput(option, event) {
         </div>
         <div class="space-y-2">
           <div class="flex items-center justify-between gap-3">
-            <h4 class="text-sm font-medium text-gray-300">Purchase options</h4>
+            <h4 class="mono text-xs font-semibold uppercase tracking-[0.16em]" style="color: var(--tape)">
+              Purchase options
+            </h4>
             <button
               type="button"
               :disabled="saving"
               @click="emit('addOption')"
-              class="shrink-0 rounded-lg bg-gray-800 px-2 py-1 text-xs text-gray-300 transition-colors hover:bg-gray-700 disabled:text-gray-500"
+              class="btn-secondary shrink-0 px-3 py-1.5 text-xs"
             >
               + Add Option
             </button>
           </div>
 
-          <div
-            v-for="(option, index) in itemForm.purchase_options"
-            :key="index"
-            class="space-y-2 rounded-lg border border-gray-800 p-3"
-          >
+          <div v-for="(option, index) in itemForm.purchase_options" :key="index" class="receipt-card space-y-2 p-3">
             <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-1">
                 <button
                   type="button"
                   :disabled="saving || index === 0"
                   @click="emit('moveUp', index)"
-                  class="text-gray-500 hover:text-gray-300 disabled:text-gray-700 disabled:cursor-default transition-colors"
+                  class="muted-copy transition-colors hover:opacity-80 disabled:opacity-30 disabled:cursor-default"
                   title="Move up"
                 >
                   &#9650;
@@ -145,25 +126,25 @@ function updateCurrencyInput(option, event) {
                   type="button"
                   :disabled="saving || index >= itemForm.purchase_options.length - 1"
                   @click="emit('moveDown', index)"
-                  class="text-gray-500 hover:text-gray-300 disabled:text-gray-700 disabled:cursor-default transition-colors"
+                  class="muted-copy transition-colors hover:opacity-80 disabled:opacity-30 disabled:cursor-default"
                   title="Move down"
                 >
                   &#9660;
                 </button>
               </div>
               <div class="flex items-center gap-3">
-                <label class="flex items-center gap-2 text-xs text-gray-400">
-                  <input type="checkbox" v-model="option.purchased" :disabled="saving" class="accent-green-500" />
+                <label class="flex items-center gap-2 text-xs muted-copy">
+                  <input type="checkbox" v-model="option.purchased" :disabled="saving" class="accent-[#6faf8a]" />
                   Purchased
                 </label>
-                <label class="flex items-center gap-2 text-xs text-gray-400">
+                <label class="flex items-center gap-2 text-xs muted-copy">
                   <input
                     type="radio"
                     name="preferred-option"
                     :checked="option.selected"
                     :disabled="saving"
                     @change="emit('selectOption', index)"
-                    class="accent-indigo-500"
+                    class="accent-[#d99a2b]"
                   />
                   Preferred
                 </label>
@@ -171,7 +152,8 @@ function updateCurrencyInput(option, event) {
                   type="button"
                   :disabled="saving"
                   @click="emit('removeOption', index)"
-                  class="text-xs text-red-300 transition-colors hover:text-red-200 disabled:text-gray-500"
+                  class="text-xs transition-colors hover:opacity-80 disabled:opacity-40"
+                  style="color: var(--overrun)"
                 >
                   Remove
                 </button>
@@ -181,14 +163,14 @@ function updateCurrencyInput(option, event) {
               v-model="option.label"
               :disabled="saving"
               placeholder="Model or name"
-              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"
+              class="field text-sm disabled:opacity-60"
             />
             <div class="grid gap-2 sm:grid-cols-2">
               <input
                 v-model="option.store"
                 :disabled="saving"
                 placeholder="Store"
-                class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"
+                class="field text-sm disabled:opacity-60"
               />
               <input
                 :value="option.price"
@@ -198,7 +180,7 @@ function updateCurrencyInput(option, event) {
                 placeholder="R$ 0,00"
                 @focus="focusCurrencyInput(option)"
                 @input="updateCurrencyInput(option, $event)"
-                class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"
+                class="field text-sm disabled:opacity-60"
               />
             </div>
             <input
@@ -206,14 +188,14 @@ function updateCurrencyInput(option, event) {
               :disabled="saving"
               type="url"
               placeholder="URL"
-              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"
+              class="field text-sm disabled:opacity-60"
             />
             <textarea
               v-model="option.notes"
               :disabled="saving"
               placeholder="Option notes"
               rows="2"
-              class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"
+              class="field text-sm disabled:opacity-60"
             ></textarea>
           </div>
         </div>
@@ -222,27 +204,18 @@ function updateCurrencyInput(option, event) {
           :disabled="saving"
           placeholder="Notes (dimensions, color, etc.)"
           rows="2"
-          class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 disabled:opacity-60 focus:outline-none focus:border-indigo-500"
+          class="field text-sm disabled:opacity-60"
         ></textarea>
       </div>
 
       <!-- Fixed footer -->
-      <div class="shrink-0 pt-3 border-t border-gray-800">
-        <p v-if="formError" class="text-sm text-red-400 mb-2">{{ formError }}</p>
+      <div class="shrink-0 pt-3 border-t border-[rgba(231,222,208,0.14)]">
+        <p v-if="formError" class="mb-2 text-sm" style="color: var(--overrun)">{{ formError }}</p>
         <div class="flex gap-2">
-          <button
-            type="submit"
-            :disabled="saving"
-            class="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-700 disabled:text-gray-500 text-white font-medium py-2 rounded-lg transition-colors"
-          >
+          <button type="submit" :disabled="saving" class="btn-primary flex-1 py-2.5">
             {{ saving ? 'Saving...' : 'Save' }}
           </button>
-          <button
-            type="button"
-            :disabled="saving"
-            @click="emit('close')"
-            class="flex-1 bg-gray-800 hover:bg-gray-700 disabled:text-gray-500 text-gray-300 py-2 rounded-lg transition-colors"
-          >
+          <button type="button" :disabled="saving" @click="emit('close')" class="btn-secondary flex-1 py-2.5">
             Cancel
           </button>
         </div>

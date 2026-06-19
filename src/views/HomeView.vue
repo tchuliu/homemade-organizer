@@ -22,27 +22,45 @@ const {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-md space-y-8">
-      <div class="text-center">
-        <h1 class="text-3xl font-bold text-white">Homemade Organizer</h1>
-        <p class="text-gray-400 mt-2">Plan furniture & appliances for your new home</p>
+  <div class="landing-shell">
+    <div class="landing-board">
+      <div class="landing-hero">
+        <p class="eyebrow">Shared moving plan</p>
+        <h1 class="display-title mt-4">Build the home list before the boxes arrive.</h1>
+        <p class="lead-copy mt-6">
+          Organize rooms, compare purchase options, and keep the BRL budget visible while a new home is still taking
+          shape.
+        </p>
+        <div class="floor-plan" aria-hidden="true">
+          <span class="floor-label floor-label-a">living</span>
+          <span class="floor-label floor-label-b">kitchen</span>
+          <span class="floor-label floor-label-c">bedroom</span>
+        </div>
       </div>
 
-      <InstallAppButton :can-install="canInstall" @install="installPwa" />
-      <LandingModeTabs v-model="mode" />
+      <div class="landing-stack">
+        <div class="panel space-y-4">
+          <div>
+            <p class="eyebrow">Homemade Organizer</p>
+            <h2 class="section-title mt-2">Start a board</h2>
+          </div>
 
-      <CreateHomeForm
-        v-if="mode === 'create'"
-        v-model:form="createForm"
-        :loading="loading"
-        :error="error"
-        @submit="createHome"
-      />
+          <InstallAppButton :can-install="canInstall" @install="installPwa" />
+          <LandingModeTabs v-model="mode" />
 
-      <JoinHomeForm v-if="mode === 'join'" v-model:join-id="joinId" @submit="joinHome" />
+          <CreateHomeForm
+            v-if="mode === 'create'"
+            v-model:form="createForm"
+            :loading="loading"
+            :error="error"
+            @submit="createHome"
+          />
 
-      <RecentHomesList :homes="recentHomes" @open="openRecentHome" />
+          <JoinHomeForm v-if="mode === 'join'" v-model:join-id="joinId" @submit="joinHome" />
+        </div>
+
+        <RecentHomesList :homes="recentHomes" @open="openRecentHome" />
+      </div>
     </div>
   </div>
 </template>

@@ -7,24 +7,15 @@ defineEmits(['back', 'copyLink'])
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center justify-between gap-3">
+  <div class="panel flex flex-wrap items-center justify-between gap-4">
     <div>
-      <h1 class="text-2xl font-bold text-white">{{ home.name }}</h1>
-      <p class="text-sm text-gray-500">ID: {{ home.id }}</p>
+      <p class="eyebrow">Home board</p>
+      <h1 class="section-title mt-2">{{ home.name }}</h1>
+      <p class="mono mt-2 text-xs muted-copy">ID: {{ home.id }}</p>
     </div>
     <div class="flex gap-2">
-      <button
-        @click="$emit('back')"
-        class="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors"
-      >
-        Home
-      </button>
-      <button
-        @click="$emit('copyLink')"
-        class="px-3 py-1.5 text-sm bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors"
-      >
-        Copy Link
-      </button>
+      <button @click="$emit('back')" class="btn-secondary px-4 py-2 text-sm">Home</button>
+      <button @click="$emit('copyLink')" class="btn-primary px-4 py-2 text-sm">Copy Link</button>
     </div>
   </div>
 </template>

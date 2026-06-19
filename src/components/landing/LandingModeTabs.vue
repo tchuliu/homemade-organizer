@@ -3,19 +3,11 @@ const mode = defineModel({ type: String, required: true })
 </script>
 
 <template>
-  <div class="flex gap-2 justify-center">
-    <button
-      @click="mode = 'create'"
-      :class="mode === 'create' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400'"
-      class="px-4 py-2 rounded-lg font-medium transition-colors"
-    >
+  <div class="tab-rail">
+    <button @click="mode = 'create'" :class="mode === 'create' ? 'tab-button-active' : ''" class="tab-button">
       New Home
     </button>
-    <button
-      @click="mode = 'join'"
-      :class="mode === 'join' ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-400'"
-      class="px-4 py-2 rounded-lg font-medium transition-colors"
-    >
+    <button @click="mode = 'join'" :class="mode === 'join' ? 'tab-button-active' : ''" class="tab-button">
       Join Existing
     </button>
   </div>

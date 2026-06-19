@@ -70,13 +70,13 @@ onMounted(fetchHome)
 </script>
 
 <template>
-  <div v-if="loading" class="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>
-  <div v-else-if="loadError" class="min-h-screen flex flex-col items-center justify-center gap-4">
-    <p class="text-red-400 text-lg">{{ loadError }}</p>
-    <button @click="router.push('/')" class="text-indigo-400 hover:text-indigo-300 underline">Back to home</button>
+  <div v-if="loading" class="min-h-screen flex items-center justify-center muted-copy mono">Loading board...</div>
+  <div v-else-if="loadError" class="min-h-screen flex flex-col items-center justify-center gap-4 px-4 text-center">
+    <p class="text-lg" style="color: var(--overrun)">{{ loadError }}</p>
+    <button @click="router.push('/')" class="btn-secondary px-4 py-2">Back to home</button>
   </div>
 
-  <div v-else class="max-w-5xl mx-auto p-4 pb-20 space-y-6">
+  <div v-else class="page-frame space-y-6">
     <HomeHeader :home="home" @back="router.push('/')" @copy-link="copyLink" />
 
     <StatusMessage :message="actionSuccess" @dismiss="actionSuccess = ''" />

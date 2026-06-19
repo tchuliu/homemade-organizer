@@ -55,33 +55,23 @@ function handleSave() {
 <template>
   <div
     v-if="show"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
     @click.self="emit('close')"
   >
-    <form
-      @submit.prevent="handleSave"
-      class="bg-gray-900 border border-gray-800 rounded-xl p-5 w-full max-w-sm space-y-3"
-    >
+    <form @submit.prevent="handleSave" class="panel w-full max-w-sm space-y-3">
       <div class="flex items-center justify-between">
-        <h3 class="text-sm font-semibold text-white">Quick Add Option</h3>
-        <button type="button" @click="emit('close')" class="text-gray-500 hover:text-gray-300 text-lg leading-none">
+        <h3 class="mono text-sm font-semibold uppercase tracking-[0.16em]" style="color: var(--tape)">
+          Quick Add Option
+        </h3>
+        <button type="button" @click="emit('close')" class="text-lg leading-none muted-copy hover:opacity-80">
           &times;
         </button>
       </div>
 
-      <input
-        ref="labelInput"
-        v-model="optionForm.label"
-        placeholder="Model or name"
-        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-      />
+      <input ref="labelInput" v-model="optionForm.label" placeholder="Model or name" class="field text-sm" />
 
       <div class="grid gap-2 grid-cols-2">
-        <input
-          v-model="optionForm.store"
-          placeholder="Store"
-          class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-        />
+        <input v-model="optionForm.store" placeholder="Store" class="field text-sm" />
         <input
           :value="optionForm.price"
           type="text"
@@ -89,34 +79,24 @@ function handleSave() {
           placeholder="R$ 0,00"
           @focus="focusPrice(optionForm)"
           @input="updatePrice(optionForm, $event)"
-          class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+          class="field text-sm"
         />
       </div>
 
-      <input
-        v-model="optionForm.url"
-        type="url"
-        placeholder="URL"
-        class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-      />
+      <input v-model="optionForm.url" type="url" placeholder="URL" class="field text-sm" />
 
       <div class="flex items-center gap-4">
-        <label class="flex items-center gap-1.5 text-xs text-gray-400">
-          <input type="checkbox" v-model="optionForm.purchased" class="accent-green-500" />
+        <label class="flex items-center gap-1.5 text-xs muted-copy">
+          <input type="checkbox" v-model="optionForm.purchased" class="accent-[#6faf8a]" />
           Purchased
         </label>
-        <label class="flex items-center gap-1.5 text-xs text-gray-400">
-          <input type="checkbox" v-model="optionForm.selected" class="accent-indigo-500" />
+        <label class="flex items-center gap-1.5 text-xs muted-copy">
+          <input type="checkbox" v-model="optionForm.selected" class="accent-[#d99a2b]" />
           Preferred
         </label>
       </div>
 
-      <button
-        type="submit"
-        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 rounded-lg transition-colors"
-      >
-        Add Option
-      </button>
+      <button type="submit" class="btn-primary w-full py-2.5 text-sm">Add Option</button>
     </form>
   </div>
 </template>

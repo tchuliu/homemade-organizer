@@ -8,10 +8,7 @@ defineEmits(['install'])
 
 <template>
   <div v-if="canInstall" class="flex justify-center">
-    <button
-      @click="$emit('install')"
-      class="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-    >
+    <button @click="$emit('install')" class="btn-secondary flex items-center gap-2 px-4 py-2 text-sm">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         class="w-4 h-4"
