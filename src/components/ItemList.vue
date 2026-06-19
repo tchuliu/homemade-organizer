@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { formatCurrency } from '../lib/currency'
 import {
   itemEstimate,
@@ -16,12 +16,34 @@ const props = defineProps({
 
 defineEmits(['edit', 'delete', 'quickAdd'])
 
-const priorityColors = { high: 'text-red-400', medium: 'text-yellow-400', low: 'text-green-400' }
-const statusColors = { planned: 'bg-gray-700 text-gray-300', researching: 'bg-blue-900 text-blue-300', bought: 'bg-green-900 text-green-300' }
+const priorityColors = { high: 'text-[#f2b9b2]', medium: 'text-[#f0b64a]', low: 'text-[#9ec9ae]' }
+const statusColors = {
+  planned: 'bg-[rgba(231,222,208,0.1)] text-[#e7ded0]',
+  researching: 'bg-[rgba(217,154,43,0.16)] text-[#f0b64a]',
+  bought: 'bg-[rgba(111,175,138,0.16)] text-[#9ec9ae]',
+}
 const expandedNoteIds = ref(new Set())
 
+const displayItems = computed(() =>
+  props.items.map((item) => {
+    const options = purchaseOptionsFromItem(item)
+    const lowest = lowestOption(item)
+    return {
+      item,
+      options,
+      lowest,
+      roomName: getRoomName(item.room_id),
+      estimate: itemEstimate(item),
+      hasOptionEstimate: hasOptionEstimate(item),
+      noteText: noteText(item),
+      shouldCollapseNote: shouldCollapseNote(item.notes),
+      isNoteExpanded: isNoteExpanded(item.id),
+    }
+  }),
+)
+
 function getRoomName(roomId) {
-  return props.rooms.find(r => r.id === roomId)?.name || 'Unknown'
+  return props.rooms.find((r) => r.id === roomId)?.name || 'Unknown'
 }
 
 function vendorHref(link) {
@@ -62,62 +84,99 @@ function toggleNote(itemId) {
 </script>
 
 <template>
-  <div v-if="items.length === 0" class="text-gray-500 text-center py-12">No items yet. Add one to get started.</div>
-  <div v-for="item in items" :key="item.id" class="bg-gray-900 border border-gray-800 rounded-xl p-4 space-y-2">
+  <div v-if="displayItems.length === 0" class="panel py-12 text-center muted-copy">
+    No items yet. Add one to get started.
+  </div>
+  <div v-for="displayItem in displayItems" :key="displayItem.item.id" class="receipt-card space-y-3 p-4">
     <div class="flex justify-between items-start gap-3">
       <div>
-        <p class="text-white font-medium">{{ item.name }}</p>
-        <p class="text-xs text-gray-500">{{ getRoomName(item.room_id) }} &middot; {{ item.type }}</p>
+        <p class="text-lg font-bold">{{ displayItem.item.name }}</p>
+        <p class="mono text-xs muted-copy">{{ displayItem.roomName }} &middot; {{ displayItem.item.type }}</p>
       </div>
       <div class="flex gap-1 shrink-0">
-        <button @click="$emit('edit', item)" class="px-2 py-1 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors">Edit</button>
-        <button @click="$emit('delete', item)" class="px-2 py-1 text-xs bg-red-900 hover:bg-red-800 text-red-300 rounded transition-colors">Del</button>
+        <button @click="$emit('edit', displayItem.item)" class="btn-secondary px-3 py-1.5 text-xs">Edit</button>
+        <button @click="$emit('delete', displayItem.item)" class="btn-danger px-3 py-1.5 text-xs">Del</button>
       </div>
     </div>
     <div class="flex flex-wrap gap-2 items-center">
-      <span class="text-sm text-indigo-300 font-medium">{{ formatCurrency(itemEstimate(item)) }}</span>
-      <span class="text-xs text-gray-500">{{ hasOptionEstimate(item) ? 'Preferred option' : 'Manual estimate' }}</span>
-      <span v-if="lowestOption(item)" class="text-xs text-gray-500">Lowest: {{ formatCurrency(optionPrice(lowestOption(item))) }}</span>
-      <span :class="priorityColors[item.priority]" class="text-xs capitalize">{{ item.priority }} priority</span>
-      <span :class="statusColors[item.status]" class="text-xs px-2 py-0.5 rounded-full capitalize">{{ item.status }}</span>
-      <button v-if="!purchaseOptionsFromItem(item).length" @click="$emit('quickAdd', item)" class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors ml-1">+ Add option</button>
-    </div>
-    <div v-if="item.notes" class="space-y-1">
-      <p class="text-sm text-gray-400 whitespace-pre-line break-words max-h-32 overflow-y-auto">{{ noteText(item) }}</p>
+      <span class="mono text-sm font-semibold" style="color: var(--tape)">{{
+        formatCurrency(displayItem.estimate)
+      }}</span>
+      <span class="text-xs muted-copy">{{
+        displayItem.hasOptionEstimate ? 'Preferred option' : 'Manual estimate'
+      }}</span>
+      <span v-if="displayItem.lowest" class="text-xs muted-copy"
+        >Lowest: {{ formatCurrency(optionPrice(displayItem.lowest)) }}</span
+      >
+      <span :class="priorityColors[displayItem.item.priority]" class="text-xs capitalize"
+        >{{ displayItem.item.priority }} priority</span
+      >
+      <span :class="statusColors[displayItem.item.status]" class="text-xs px-2 py-0.5 rounded-full capitalize">{{
+        displayItem.item.status
+      }}</span>
       <button
-        v-if="shouldCollapseNote(item.notes)"
-        @click="toggleNote(item.id)"
-        class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-      >{{ isNoteExpanded(item.id) ? 'Show less' : 'Show more' }}</button>
+        v-if="!displayItem.options.length"
+        @click="$emit('quickAdd', displayItem.item)"
+        class="mono ml-1 text-xs transition-colors hover:opacity-80"
+        style="color: var(--tape)"
+      >
+        + Add option
+      </button>
     </div>
-    <div v-if="purchaseOptionsFromItem(item).length" class="space-y-2">
+    <div v-if="displayItem.item.notes" class="space-y-1">
+      <p class="max-h-32 overflow-y-auto whitespace-pre-line break-words text-sm muted-copy">
+        {{ displayItem.noteText }}
+      </p>
+      <button
+        v-if="displayItem.shouldCollapseNote"
+        @click="toggleNote(displayItem.item.id)"
+        class="mono text-xs transition-colors hover:opacity-80"
+        style="color: var(--tape)"
+      >
+        {{ displayItem.isNoteExpanded ? 'Show less' : 'Show more' }}
+      </button>
+    </div>
+    <div v-if="displayItem.options.length" class="space-y-2">
       <div class="flex items-center justify-between gap-2">
-        <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Purchase options</p>
-        <button @click="$emit('quickAdd', item)" class="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">+ Add option</button>
-      </div>
-      <div class="divide-y divide-gray-800 overflow-hidden rounded-lg border border-gray-800">
-        <div
-          v-for="(option, i) in purchaseOptionsFromItem(item)" :key="i"
-          class="flex flex-wrap items-start gap-3 px-3 py-2"
+        <p class="mono text-xs font-medium uppercase tracking-[0.16em] muted-copy">Purchase options</p>
+        <button
+          @click="$emit('quickAdd', displayItem.item)"
+          class="mono text-xs transition-colors hover:opacity-80"
+          style="color: var(--tape)"
         >
+          + Add option
+        </button>
+      </div>
+      <div
+        class="overflow-hidden rounded-xl border border-[rgba(231,222,208,0.13)] divide-y divide-[rgba(231,222,208,0.1)]"
+      >
+        <div v-for="(option, i) in displayItem.options" :key="i" class="flex flex-wrap items-start gap-3 px-3 py-2">
           <div class="min-w-0 flex-1">
-            <p class="truncate text-sm font-medium text-gray-200">{{ option.label || vendorLabel(option, i) }}</p>
-            <p class="text-xs text-gray-500">
+            <p class="truncate text-sm font-bold">{{ option.label || vendorLabel(option, i) }}</p>
+            <p class="text-xs muted-copy">
               <span v-if="option.store">{{ option.store }}</span>
               <span v-if="option.store && vendorHref(option)"> &middot; </span>
               <a
                 v-if="vendorHref(option)"
-                :href="vendorHref(option)" target="_blank" rel="noopener"
-                class="text-indigo-400 hover:text-indigo-300 underline"
+                :href="vendorHref(option)"
+                target="_blank"
+                rel="noopener"
+                class="underline transition-colors hover:opacity-80"
+                style="color: var(--tape)"
                 :title="vendorHref(option)"
-              >Open link</a>
+                >Open link</a
+              >
             </p>
-            <p v-if="option.notes" class="mt-1 text-xs text-gray-500 whitespace-pre-line break-words">{{ option.notes }}</p>
+            <p v-if="option.notes" class="mt-1 whitespace-pre-line break-words text-xs muted-copy">
+              {{ option.notes }}
+            </p>
           </div>
           <div class="text-right">
-            <p v-if="optionPrice(option)" class="text-sm font-medium text-gray-200">{{ formatCurrency(optionPrice(option)) }}</p>
-            <p v-if="option.purchased" class="text-xs text-green-300">Purchased</p>
-            <p v-else-if="option.selected" class="text-xs text-green-400">Preferred</p>
+            <p v-if="optionPrice(option)" class="mono text-sm font-semibold">
+              {{ formatCurrency(optionPrice(option)) }}
+            </p>
+            <p v-if="option.purchased" class="text-xs" style="color: var(--receipt)">Purchased</p>
+            <p v-else-if="option.selected" class="text-xs" style="color: var(--receipt)">Preferred</p>
           </div>
         </div>
       </div>

@@ -19,12 +19,11 @@ async function generateIcon(size) {
       channels: 4,
       background: BG,
     },
-  }).png().toBuffer()
-
-  const icon = await sharp(svgBuffer)
-    .resize(iconSize, iconSize)
+  })
     .png()
     .toBuffer()
+
+  const icon = await sharp(svgBuffer).resize(iconSize, iconSize).png().toBuffer()
 
   return sharp(background)
     .composite([{ input: icon, top: padding, left: padding }])
@@ -42,7 +41,7 @@ async function main() {
   console.log('Icons generated: icon-192.png, icon-512.png')
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Failed to generate icons:', err)
   process.exit(1)
 })
